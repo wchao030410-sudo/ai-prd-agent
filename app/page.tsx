@@ -4,19 +4,38 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, MessageSquare, FileText, Loader2, Trash2, Zap } from 'lucide-react';
+import {
+  Plus,
+  MessageSquare,
+  FileText,
+  Loader2,
+  Trash2,
+  Zap,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import { PRDViewer } from '@/components/prd/PRDViewer';
 import { ThinkingIndicator } from '@/components/prd/ThinkingIndicator';
-import { PRDDocument } from '@/types/prd';
+import { StepIndicator } from '@/components/prd/StepIndicator';
+import { ConversationPanel } from '@/components/prd/ConversationPanel';
+import { EditablePRDViewer } from '@/components/prd/PRDViewerEditable';
+import { DiagramsViewer } from '@/components/prd/DiagramsViewer';
+import { MermaidChart } from '@/components/prd/MermaidChart';
+import { ExportButton } from '@/components/prd/ExportButton';
+import { PRDDocumentPreview } from '@/components/prd/PRDDocumentPreview';
+import { PRDDocument, Diagrams } from '@/types/prd';
+import { safeJsonParse } from '@/lib/utils';
 
 interface Session {
   id: string;
   title: string;
   updatedAt: Date;
+  currentStep?: number;
   prd?: {
     id: string;
     title: string;
     description: string;
+    isFinal?: boolean;
   };
 }
 
@@ -27,7 +46,23 @@ export default function Home() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [currentPRD, setCurrentPRD] = useState<PRDDocument | null>(null);
+  const [diagrams, setDiagrams] = useState<Diagrams | null>(null);
+  const [finalMarkdown, setFinalMarkdown] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState(1);
   const [error, setError] = useState('');
+
+  // 图表生成状态
+  const [diagramStatus, setDiagramStatus] = useState<{
+    architecture: 'idle' | 'loading' | 'success' | 'error';
+    journey: 'idle' | 'loading' | 'success' | 'error';
+    features: 'idle' | 'loading' | 'success' | 'error';
+    dataflow: 'idle' | 'loading' | 'success' | 'error';
+  }>({
+    architecture: 'idle',
+    journey: 'idle',
+    features: 'idle',
+    dataflow: 'idle',
+  });
 
   // 加载会话列表
   useEffect(() => {
@@ -37,8 +72,11 @@ export default function Home() {
   const loadSessions = async () => {
     try {
       const response = await fetch('/api/sessions');
+      if (!response.ok) {
+        throw new Error(`加载失败: ${response.status}`);
+      }
       const result = await response.json();
-      if (result.success) {
+      if (result.success && Array.isArray(result.data)) {
         setSessions(result.data);
       }
     } catch (err) {
@@ -53,6 +91,9 @@ export default function Home() {
     setError('');
     setCurrentPRD(null);
     setSelectedSession(null);
+    setCurrentStep(1);
+    setDiagrams(null);
+    setFinalMarkdown(null);
 
     try {
       const response = await fetch('/api/prd/generate', {
@@ -63,15 +104,20 @@ export default function Home() {
         body: JSON.stringify({ idea }),
       });
 
+      if (!response.ok) {
+        throw new Error(`生成失败: ${response.status}`);
+      }
+
       const result = await response.json();
 
       if (result.success) {
-        // 延迟一下，让用户看到进度完成
         setTimeout(() => {
           setCurrentPRD(result.data.prd);
+          setSelectedSession({ id: result.data.sessionId, title: result.data.prd.title, updatedAt: new Date() });
           setShowProgress(false);
           setIdea('');
           loadSessions();
+          setCurrentStep(1); // 进入 Step 1
         }, 500);
       } else {
         setShowProgress(false);
@@ -85,20 +131,18 @@ export default function Home() {
     }
   };
 
-  const handleProgressComplete = () => {
-    // 进度完成后的回调（可选）
-    console.log('进度完成');
-  };
-
   const handleNewPRD = () => {
     setSelectedSession(null);
     setCurrentPRD(null);
+    setDiagrams(null);
+    setFinalMarkdown(null);
+    setCurrentStep(1);
     setError('');
     setIdea('');
   };
 
   const handleDeleteSession = async (sessionId: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // 阻止事件冒泡
+    e.stopPropagation();
 
     if (!confirm('确定要删除这个会话吗？此操作不可撤销。')) {
       return;
@@ -112,10 +156,12 @@ export default function Home() {
       const result = await response.json();
 
       if (result.success) {
-        // 如果删除的是当前选中的会话，清空选择
         if (selectedSession?.id === sessionId) {
           setSelectedSession(null);
           setCurrentPRD(null);
+          setDiagrams(null);
+          setFinalMarkdown(null);
+          setCurrentStep(1);
         }
         await loadSessions();
       } else {
@@ -129,67 +175,48 @@ export default function Home() {
   const handleLoadSession = async (session: Session) => {
     setSelectedSession(session);
     setError('');
+    setCurrentStep(session.currentStep || 1);
 
     try {
       const response = await fetch(`/api/sessions/${session.id}`);
+
+      if (!response.ok) {
+        throw new Error(`加载失败: ${response.status}`);
+      }
+
       const result = await response.json();
 
       if (result.success && result.data.prd) {
-        try {
-          const prd = result.data.prd;
-          console.log('加载的 PRD 数据:', prd);
+        const prd = result.data.prd;
 
-          // 安全解析函数
-          const parseWithFallback = <T,>(data: string | undefined | null, fallback: T): T => {
-            if (!data) {
-              console.log('数据为空，使用默认值:', fallback);
-              return fallback;
-            }
-            try {
-              const parsed = JSON.parse(data);
-              console.log('解析成功:', parsed);
-              return parsed;
-            } catch (e) {
-              console.error('解析失败，数据:', data);
-              return fallback;
-            }
-          };
+        const prdData: PRDDocument = {
+          title: prd.title || '未命名 PRD',
+          description: prd.description || '',
+          background: prd.background || '',
+          targetUsers: safeJsonParse(prd.targetUsers, { primary: [], secondary: [] }),
+          painPoints: safeJsonParse(prd.painPoints, []),
+          coreValue: safeJsonParse(prd.coreValue, []),
+          features: safeJsonParse(prd.features, []),
+          successMetrics: safeJsonParse(prd.successMetrics, []),
+          techFeasibility: safeJsonParse(prd.techFeasibility, undefined),
+          competitors: safeJsonParse(prd.competitors, []),
+        };
 
-          // 解析 features
-          let features;
-          try {
-            if (prd.features) {
-              features = JSON.parse(prd.features);
-              if (!Array.isArray(features)) {
-                console.error('features 不是数组:', features);
-                features = [];
-              }
-            } else {
-              features = [];
-            }
-          } catch (e) {
-            console.error('features 解析失败:', e, '原始数据:', prd.features);
-            features = [];
-          }
+        setCurrentPRD(prdData);
 
-          const prdData = {
-            title: prd.title || '未命名 PRD',
-            description: prd.description || '',
-            background: prd.background || '',
-            targetUsers: parseWithFallback(prd.targetUsers, { primary: [], secondary: [] }),
-            painPoints: parseWithFallback(prd.painPoints, []),
-            coreValue: parseWithFallback(prd.coreValue, []),
-            features: features || [],
-            successMetrics: parseWithFallback(prd.successMetrics, []),
-            techFeasibility: parseWithFallback(prd.techFeasibility, undefined),
-            competitors: parseWithFallback(prd.competitors, []),
-          };
+        // 加载图表（如果有）
+        if (prd.mermaidArchitecture || prd.mermaidJourney || prd.mermaidFeatures || prd.mermaidDataflow) {
+          setDiagrams({
+            architecture: prd.mermaidArchitecture || '',
+            journey: prd.mermaidJourney || '',
+            features: prd.mermaidFeatures || '',
+            dataflow: prd.mermaidDataflow || '',
+          });
+        }
 
-          console.log('最终 PRD 数据:', prdData);
-          setCurrentPRD(prdData);
-        } catch (parseErr) {
-          console.error('PRD 数据解析错误:', parseErr);
-          setError('PRD 数据解析失败：' + (parseErr instanceof Error ? parseErr.message : '未知错误'));
+        // 加载最终版本（如果有）
+        if (prd.isFinal && prd.finalContent) {
+          setFinalMarkdown(prd.finalContent);
         }
       } else {
         setError('未找到 PRD 数据');
@@ -199,6 +226,133 @@ export default function Home() {
       setError(err instanceof Error ? err.message : '加载失败，请重试');
     }
   };
+
+  // 生成 Mermaid 图表
+  const handleGenerateDiagrams = async () => {
+    if (!selectedSession) return;
+
+    // Store the current session ID to prevent race conditions
+    const currentSessionId = selectedSession.id;
+
+    setLoading(true);
+    setError('');
+
+    // 重置状态
+    setDiagramStatus({
+      architecture: 'loading',
+      journey: 'loading',
+      features: 'loading',
+      dataflow: 'loading',
+    });
+    setDiagrams(null);
+
+    try {
+      const response = await fetch('/api/diagrams/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sessionId: currentSessionId }),
+      });
+
+      const result = await response.json();
+
+      // CRITICAL: Only update state if we haven't switched sessions
+      if (selectedSession?.id !== currentSessionId) {
+        return; // User switched sessions, discard this result
+      }
+
+      if (result.success) {
+        // 直接设置所有图表数据和状态
+        const diagramData = result.data.diagrams;
+        setDiagrams({
+          architecture: diagramData.architecture,
+          journey: diagramData.journey || '',
+          features: diagramData.features || '',
+          dataflow: diagramData.dataflow || '',
+        });
+        setDiagramStatus({
+          architecture: 'success',
+          journey: 'success',
+          features: 'success',
+          dataflow: 'success',
+        });
+      } else {
+        setDiagramStatus({
+          architecture: 'error',
+          journey: 'error',
+          features: 'error',
+          dataflow: 'error',
+        });
+        setError(result.error || '生成图表失败');
+      }
+    } catch (err) {
+      // Only update error state if we haven't switched sessions
+      if (selectedSession?.id !== currentSessionId) {
+        return;
+      }
+      setDiagramStatus({
+        architecture: 'error',
+        journey: 'error',
+        features: 'error',
+        dataflow: 'error',
+      });
+      setError(err instanceof Error ? err.message : '生成图表失败');
+    } finally {
+      // Only clear loading state if we haven't switched sessions
+      if (selectedSession?.id === currentSessionId) {
+        setLoading(false);
+      }
+    }
+  };
+
+  // 生成最终 PRD
+  const handleFinalizePRD = async () => {
+    if (!selectedSession) return;
+
+    // Store the current session ID to prevent race conditions
+    const currentSessionId = selectedSession.id;
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/prd/finalize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sessionId: currentSessionId }),
+      });
+
+      const result = await response.json();
+
+      // CRITICAL: Only update state if we haven't switched sessions
+      if (selectedSession?.id !== currentSessionId) {
+        return; // User switched sessions, discard this result
+      }
+
+      if (result.success) {
+        setFinalMarkdown(result.data.markdown);
+        setCurrentStep(3);
+      } else {
+        setError(result.error || '生成最终 PRD 失败');
+      }
+    } catch (err) {
+      // Only update error state if we haven't switched sessions
+      if (selectedSession?.id !== currentSessionId) {
+        return;
+      }
+      setError(err instanceof Error ? err.message : '生成最终 PRD 失败');
+    } finally {
+      // Only clear loading state if we haven't switched sessions
+      if (selectedSession?.id === currentSessionId) {
+        setLoading(false);
+      }
+    }
+  };
+
+  const steps = ['PRD 初稿', '可视化图表', '完整文档'];
 
   return (
     <div className="flex h-screen bg-background">
@@ -256,13 +410,13 @@ export default function Home() {
         <header className="border-b border-border px-6 py-4">
           <h1 className="text-2xl font-bold">AI PRD Agent</h1>
           <p className="text-sm text-muted-foreground">
-            输入产品想法，快速生成专业的产品需求文档
+            三步生成专业的产品需求文档：初稿 → 图表 → 完整文档
           </p>
         </header>
 
         {/* 内容区域 */}
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="mx-auto max-w-4xl space-y-6">
+          <div className="mx-auto max-w-5xl space-y-6">
             {/* 错误提示 */}
             {error && (
               <div className="rounded-lg border border-destructive bg-destructive/10 p-4 text-destructive">
@@ -270,15 +424,265 @@ export default function Home() {
               </div>
             )}
 
-            {/* PRD 查看器 */}
-            {currentPRD ? (
-              <PRDViewer prd={currentPRD} />
-            ) : showProgress ? (
-              /* AI 思考进度 */
-              <ThinkingIndicator onComplete={handleProgressComplete} />
-            ) : (
+            {/* 步骤指示器 */}
+            {currentPRD && (
+              <StepIndicator current={currentStep} total={3} steps={steps} />
+            )}
+
+            {/* Step 1: PRD 初稿 + 编辑 */}
+            {currentPRD && currentStep === 1 && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold">Step 1: PRD 初稿与编辑</h2>
+                  <Button onClick={() => setCurrentStep(2)} className="gap-2">
+                    下一步：生成图表
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {/* 可编辑的 PRD 查看器 */}
+                {selectedSession ? (
+                  <EditablePRDViewer
+                    prd={currentPRD}
+                    sessionId={selectedSession.id}
+                    onPRDUpdate={setCurrentPRD}
+                  />
+                ) : (
+                  <PRDViewer prd={currentPRD} />
+                )}
+
+                {/* 对话式编辑面板（备用） */}
+                {selectedSession && (
+                  <ConversationPanel
+                    sessionId={selectedSession.id}
+                    onPRDUpdate={setCurrentPRD}
+                  />
+                )}
+
+                {/* 底部导航按钮 */}
+                <div className="flex justify-center">
+                  <Button onClick={() => setCurrentStep(2)} className="gap-2">
+                    下一步：生成图表
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Mermaid 图表 */}
+            {currentPRD && currentStep === 2 && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <Button
+                    onClick={() => setCurrentStep(1)}
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    上一步
+                  </Button>
+                  <h2 className="text-xl font-semibold">Step 2: 可视化图表</h2>
+                  <Button onClick={() => setCurrentStep(3)} className="gap-2">
+                    下一步：完整文档
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {/* 判断是否有图表内容 */}
+                {diagrams && (diagrams.architecture || diagrams.journey || diagrams.features || diagrams.dataflow) ? (
+                  <div className="space-y-6">
+                    {diagrams.architecture && (
+                      <MermaidChart
+                        code={diagrams.architecture}
+                        title="系统架构图"
+                        description="展示系统的技术架构和组件关系"
+                      />
+                    )}
+                    {diagrams.journey && (
+                      <MermaidChart
+                        code={diagrams.journey}
+                        title="用户旅程图"
+                        description="展示用户使用产品的完整流程和体验"
+                      />
+                    )}
+                    {diagrams.features && (
+                      <MermaidChart
+                        code={diagrams.features}
+                        title="功能模块图"
+                        description="展示核心功能的模块化结构"
+                      />
+                    )}
+                    {diagrams.dataflow && (
+                      <MermaidChart
+                        code={diagrams.dataflow}
+                        title="数据流图"
+                        description="展示数据在系统中的流动过程"
+                      />
+                    )}
+
+                    {/* 底部导航按钮 */}
+                    <div className="flex justify-center">
+                      <Button onClick={() => setCurrentStep(3)} className="gap-2">
+                        下一步：完整文档
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* 生成按钮 */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>生成可视化图表</CardTitle>
+                        <CardDescription>
+                          基于当前 PRD 生成系统架构图、用户旅程图、功能模块图和数据流图
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <Button
+                          onClick={handleGenerateDiagrams}
+                          disabled={loading}
+                          className="gap-2"
+                        >
+                          {loading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              生成中...
+                            </>
+                          ) : (
+                            <>
+                              <Zap className="h-4 w-4" />
+                              生成图表
+                            </>
+                          )}
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    {/* 生成进度 */}
+                    {loading && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            生成进度
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            {[
+                              { key: 'architecture', label: '系统架构图' },
+                              { key: 'journey', label: '用户旅程图' },
+                              { key: 'features', label: '功能模块图' },
+                              { key: 'dataflow', label: '数据流图' },
+                            ].map(({ key, label }) => {
+                              const status = diagramStatus[key as keyof typeof diagramStatus];
+                              return (
+                                <div key={key} className="space-y-2">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <span className="font-medium">{label}</span>
+                                    {status === 'loading' && (
+                                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                    )}
+                                    {status === 'success' && (
+                                      <span className="text-green-600">✓ 完成</span>
+                                    )}
+                                    {status === 'idle' && (
+                                      <span className="text-muted-foreground">等待中...</span>
+                                    )}
+                                  </div>
+                                  {status === 'loading' && (
+                                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                                      <div className="h-full animate-pulse w-1/2 bg-primary" />
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Step 3: 完整文档 + 导出 */}
+            {currentPRD && currentStep === 3 && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <Button
+                    onClick={() => setCurrentStep(2)}
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    上一步
+                  </Button>
+                  <h2 className="text-xl font-semibold">Step 3: 完整文档与导出</h2>
+                  <div className="w-24" /> {/* 占位，保持居中 */}
+                </div>
+
+                {!finalMarkdown ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>生成完整 PRD 文档</CardTitle>
+                      <CardDescription>
+                        整合 PRD 内容和可视化图表，生成可交付的完整文档
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Button
+                        onClick={handleFinalizePRD}
+                        disabled={loading}
+                        className="gap-2"
+                      >
+                        {loading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            生成中...
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="h-4 w-4" />
+                            生成完整 PRD
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-6">
+                    {/* 预览完整 PRD 文档 */}
+                    <PRDDocumentPreview content={finalMarkdown} title={currentPRD.title} />
+
+                    {/* 导出按钮 */}
+                    <Card className="max-w-7xl mx-auto">
+                      <CardHeader>
+                        <CardTitle>导出完整 PRD</CardTitle>
+                        <CardDescription>
+                          选择导出格式，下载可交付的 PRD 文档
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {selectedSession && (
+                          <ExportButton
+                            sessionId={selectedSession.id}
+                            prdTitle={currentPRD.title}
+                            hasFinalContent={!!finalMarkdown}
+                          />
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 初始输入界面 */}
+            {!currentPRD && !showProgress && (
               <>
-                {/* 输入区域 */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -300,7 +704,7 @@ export default function Home() {
                     <div className="flex justify-end">
                       <Button
                         onClick={handleGeneratePRD}
-                        disabled={loading || showProgress || !idea.trim()}
+                        disabled={loading || !idea.trim()}
                         className="gap-2"
                       >
                         {loading ? (
@@ -343,6 +747,9 @@ export default function Home() {
                 </Card>
               </>
             )}
+
+            {/* AI 思考进度 */}
+            {showProgress && <ThinkingIndicator onComplete={() => {}} />}
           </div>
         </div>
       </main>

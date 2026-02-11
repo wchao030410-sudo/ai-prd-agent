@@ -1,7 +1,7 @@
 // 智谱 AI API 封装
 
 const API_BASE = 'https://open.bigmodel.cn/api/paas/v4';
-const MODEL = 'glm-4.6v';
+const MODEL = process.env.ZHIPU_MODEL || 'glm-4.6v';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';

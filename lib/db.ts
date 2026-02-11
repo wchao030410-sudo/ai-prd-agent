@@ -37,7 +37,7 @@ export async function listSessions() {
   });
 }
 
-export async function updateSession(id: string, data: { title?: string }) {
+export async function updateSession(id: string, data: { title?: string; currentStep?: number }) {
   return prisma.session.update({
     where: { id },
     data: {
@@ -54,6 +54,12 @@ export async function deleteSession(id: string) {
 }
 
 export async function linkPRDToSession(sessionId: string, prdId: string) {
+  // 同时更新 Session 和 PRD，建立双向关联
+  await prisma.pRD.update({
+    where: { id: prdId },
+    data: { sessionId },
+  });
+
   return prisma.session.update({
     where: { id: sessionId },
     data: { prdId },
@@ -92,10 +98,17 @@ export async function createPRD(data: {
   techFeasibility?: string;
   competitors?: string;
 }) {
-  const prd = await prisma.pRD.create({ data });
-  if (data.sessionId) {
-    await linkPRDToSession(data.sessionId, prd.id);
+  // 先创建 PRD（不包含 sessionId，避免外键约束问题）
+  const { sessionId, ...prdData } = data;
+  const prd = await prisma.pRD.create({
+    data: prdData,
+  });
+
+  // 然后关联到 session（如果提供了 sessionId）
+  if (sessionId) {
+    await linkPRDToSession(sessionId, prd.id);
   }
+
   return prd;
 }
 
@@ -114,18 +127,7 @@ export async function getPRDBySession(sessionId: string) {
   });
 }
 
-export async function updatePRD(id: string, data: Partial<{
-  title: string;
-  description: string;
-  background: string;
-  targetUsers: string;
-  painPoints: string;
-  coreValue: string;
-  features: string;
-  successMetrics?: string;
-  techFeasibility?: string;
-  competitors?: string;
-}>) {
+export async function updatePRD(id: string, data: any) {
   return prisma.pRD.update({
     where: { id },
     data: {

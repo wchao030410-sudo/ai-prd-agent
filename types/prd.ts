@@ -64,6 +64,37 @@ export interface Session {
   id: string;
   title: string;
   prdId?: string;
+  currentStep?: number;  // 当前在第几步 (1/2/3)
   createdAt: Date;
   updatedAt: Date;
+}
+
+// Mermaid 图表类型
+export interface Diagrams {
+  architecture?: string;  // 系统架构图代码
+  journey?: string;       // 用户旅程图代码
+  features?: string;      // 功能模块图代码
+  dataflow?: string;      // 数据流图代码
+}
+
+// 编辑指令类型
+export interface EditInstruction {
+  instruction: string;
+  targetField?: string;  // 可选：指定修改的字段
+}
+
+// 最终 PRD 类型
+export interface FinalPRD {
+  markdown: string;      // 完整 Markdown 内容
+  diagrams: Diagrams;
+  generatedAt: Date;
+}
+
+// 导出格式类型
+export type ExportFormat = 'pdf' | 'md' | 'docx';
+
+// 工作流步骤类型
+export interface WorkflowStep {
+  step: 1 | 2 | 3;
+  status: 'pending' | 'in_progress' | 'completed';
 }

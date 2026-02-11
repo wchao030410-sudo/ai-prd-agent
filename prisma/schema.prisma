@@ -14,6 +14,7 @@ model Session {
   id          String   @id @default(cuid())
   title       String
   prdId       String?  @unique
+  currentStep Int      @default(1)  // 当前在第几步 (1/2/3)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   messages    Message[]
@@ -32,21 +33,29 @@ model Message {
 
 // PRD 文档：保存生成的产品需求文档
 model PRD {
-  id          String   @id @default(cuid())
-  sessionId   String?  @unique
-  title       String
-  description String
-  background  String?
-  targetUsers String   // JSON: { primary: [], secondary: [] }
-  painPoints  String?  // JSON: []
-  coreValue   String?  // JSON: []
-  features    String   // JSON: [{ id, name, description, priority, effort, value, acceptanceCriteria }]
-  successMetrics String? // JSON: []
-  techFeasibility String? // JSON: { overall, challenges, recommendations }
-  competitors String? // JSON: [{ name, features, differences }]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  session     Session? @relation(fields: [sessionId], references: [id])
+  id                   String   @id @default(cuid())
+  sessionId            String?  @unique
+  title                String
+  description          String
+  background           String?
+  targetUsers          String   // JSON: { primary: [], secondary: [] }
+  painPoints           String?  // JSON: []
+  coreValue            String?  // JSON: []
+  features             String   // JSON: [{ id, name, description, priority, effort, value, acceptanceCriteria }]
+  successMetrics       String?  // JSON: []
+  techFeasibility      String?  // JSON: { overall, challenges, recommendations }
+  competitors          String?  // JSON: [{ name, features, differences }]
+  // Mermaid 图表字段
+  mermaidArchitecture  String?  // 系统架构图代码
+  mermaidJourney       String?  // 用户旅程图代码
+  mermaidFeatures      String?  // 功能模块图代码
+  mermaidDataflow      String?  // 数据流图代码
+  // 最终版本字段
+  isFinal              Boolean  @default(false)  // 是否是最终版本
+  finalContent         String?                    // 完整 PRD (Markdown)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  session              Session? @relation(fields: [sessionId], references: [id])
 }
 
 // 分析日志：记录竞品分析、可行性分析等
