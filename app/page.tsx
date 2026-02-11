@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, MessageSquare, FileText, Users, Zap, Loader2 } from 'lucide-react';
+import { Plus, MessageSquare, FileText, Loader2, Trash2, Zap } from 'lucide-react';
 import { PRDViewer } from '@/components/prd/PRDViewer';
+import { ThinkingIndicator } from '@/components/prd/ThinkingIndicator';
 import { PRDDocument } from '@/types/prd';
 
 interface Session {
@@ -22,6 +23,7 @@ interface Session {
 export default function Home() {
   const [idea, setIdea] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showProgress, setShowProgress] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [currentPRD, setCurrentPRD] = useState<PRDDocument | null>(null);
@@ -47,6 +49,7 @@ export default function Home() {
   const handleGeneratePRD = async () => {
     if (!idea.trim()) return;
     setLoading(true);
+    setShowProgress(true);
     setError('');
     setCurrentPRD(null);
     setSelectedSession(null);
@@ -63,17 +66,28 @@ export default function Home() {
       const result = await response.json();
 
       if (result.success) {
-        setCurrentPRD(result.data.prd);
-        setIdea('');
-        await loadSessions();
+        // 延迟一下，让用户看到进度完成
+        setTimeout(() => {
+          setCurrentPRD(result.data.prd);
+          setShowProgress(false);
+          setIdea('');
+          loadSessions();
+        }, 500);
       } else {
+        setShowProgress(false);
         setError(result.error || '生成失败');
       }
     } catch (err) {
+      setShowProgress(false);
       setError(err instanceof Error ? err.message : '网络错误');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleProgressComplete = () => {
+    // 进度完成后的回调（可选）
+    console.log('进度完成');
   };
 
   const handleNewPRD = () => {
@@ -81,6 +95,35 @@ export default function Home() {
     setCurrentPRD(null);
     setError('');
     setIdea('');
+  };
+
+  const handleDeleteSession = async (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // 阻止事件冒泡
+
+    if (!confirm('确定要删除这个会话吗？此操作不可撤销。')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // 如果删除的是当前选中的会话，清空选择
+        if (selectedSession?.id === sessionId) {
+          setSelectedSession(null);
+          setCurrentPRD(null);
+        }
+        await loadSessions();
+      } else {
+        setError(result.error || '删除失败');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '删除失败');
+    }
   };
 
   const handleLoadSession = async (session: Session) => {
@@ -178,18 +221,29 @@ export default function Home() {
               </p>
             ) : (
               sessions.map((session) => (
-                <button
+                <div
                   key={session.id}
-                  onClick={() => handleLoadSession(session)}
-                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                  className={`group flex w-full items-center gap-1 rounded-lg px-2 py-1 transition-colors ${
                     selectedSession?.id === session.id
                       ? 'bg-accent'
                       : 'hover:bg-accent'
                   }`}
                 >
-                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                  <span className="flex-1 truncate">{session.title}</span>
-                </button>
+                  <button
+                    onClick={() => handleLoadSession(session)}
+                    className="flex min-w-0 items-center gap-2 rounded-md px-2 py-2 text-left text-sm flex-1"
+                  >
+                    <MessageSquare className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="truncate">{session.title}</span>
+                  </button>
+                  <button
+                    onClick={(e) => handleDeleteSession(session.id, e)}
+                    className="flex-shrink-0 rounded-md p-2 opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                    title="删除会话"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               ))
             )}
           </div>
@@ -219,6 +273,9 @@ export default function Home() {
             {/* PRD 查看器 */}
             {currentPRD ? (
               <PRDViewer prd={currentPRD} />
+            ) : showProgress ? (
+              /* AI 思考进度 */
+              <ThinkingIndicator onComplete={handleProgressComplete} />
             ) : (
               <>
                 {/* 输入区域 */}
@@ -243,13 +300,13 @@ export default function Home() {
                     <div className="flex justify-end">
                       <Button
                         onClick={handleGeneratePRD}
-                        disabled={loading || !idea.trim()}
+                        disabled={loading || showProgress || !idea.trim()}
                         className="gap-2"
                       >
                         {loading ? (
                           <>
                             <Loader2 className="h-4 w-4 animate-spin" />
-                            生成中...
+                            启动中...
                           </>
                         ) : (
                           <>
@@ -261,45 +318,6 @@ export default function Home() {
                     </div>
                   </CardContent>
                 </Card>
-
-                {/* 功能特性 */}
-                <div className="grid gap-4 md:grid-cols-3">
-                  <Card>
-                    <CardHeader>
-                      <Users className="h-8 w-8 text-primary" />
-                      <CardTitle className="text-lg">竞品分析</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground">
-                        自动搜索和分析竞品功能，提供差异化建议
-                      </p>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <Zap className="h-8 w-8 text-primary" />
-                      <CardTitle className="text-lg">可行性评估</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground">
-                        技术栈建议、开发周期估算、风险评估
-                      </p>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <FileText className="h-8 w-8 text-primary" />
-                      <CardTitle className="text-lg">优先级排序</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground">
-                        基于 RICE 评分法，智能推荐功能优先级
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
 
                 {/* 示例 */}
                 <Card>
