@@ -7,7 +7,11 @@ const ADMIN_SECRET = new TextEncoder().encode(
 )
 
 export async function middleware(request: NextRequest) {
-  // Only protect admin routes
+  // Only protect admin routes (exclude login page)
+  if (request.nextUrl.pathname === '/admin/login') {
+    return NextResponse.next()
+  }
+
   if (!request.nextUrl.pathname.startsWith('/admin')) {
     return NextResponse.next()
   }
