@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AnonymousUserProvider } from "@/components/AnonymousUserProvider";
 import { PageViewTracker } from "@/components/PageViewTracker";
+import { Analytics } from '@vercel/analytics/react'
 import "./globals.css";
 
 const geistSans = Geist({
@@ -36,6 +37,7 @@ export default function RootLayout({
             {children}
           </ErrorBoundary>
         </AnonymousUserProvider>
+        <Analytics />
       </body>
     </html>
   );
