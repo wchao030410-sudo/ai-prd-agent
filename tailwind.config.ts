@@ -73,7 +73,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate") as unknown as Config],
+  plugins: [require("tailwindcss-animate")],
 };
 
 export default config;

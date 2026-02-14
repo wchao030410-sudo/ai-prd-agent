@@ -61,7 +61,6 @@ export function MermaidChart({
       setSvgContent(svg);
       setIsRendering(false);
     } catch (err) {
-      console.error('Mermaid 渲染错误:', err);
       // 提供更友好的错误信息
       let errorMessage = '图表渲染失败';
       if (err instanceof Error) {

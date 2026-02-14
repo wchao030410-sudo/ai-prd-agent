@@ -26,7 +26,6 @@ export async function GET(
       data: session,
     });
   } catch (error) {
-    console.error('获取会话失败:', error);
     return NextResponse.json(
       {
         success: false,
@@ -53,7 +52,6 @@ export async function DELETE(
       message: '会话已删除',
     });
   } catch (error) {
-    console.error('删除会话失败:', error);
     return NextResponse.json(
       {
         success: false,

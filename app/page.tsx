@@ -80,7 +80,7 @@ export default function Home() {
         setSessions(result.data);
       }
     } catch (err) {
-      console.error('加载会话失败:', err);
+      // 静默失败，不影响用户体验
     }
   };
 
@@ -222,7 +222,6 @@ export default function Home() {
         setError('未找到 PRD 数据');
       }
     } catch (err) {
-      console.error('加载会话失败:', err);
       setError(err instanceof Error ? err.message : '加载失败，请重试');
     }
   };

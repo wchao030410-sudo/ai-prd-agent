@@ -18,6 +18,6 @@ export function usePageViewTracking() {
         sessionId,
         path: pathname
       })
-    }).catch(console.error) // Non-blocking
+    }).catch(() => {}) // Non-blocking
   }, [pathname, anonymousId, sessionId])
 }

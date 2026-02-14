@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       status: 'success',
       duration,
       tokensUsed: 0 // TODO: Extract from AI response if available
-    }).catch(console.error) // Non-blocking
+    }).catch(() => {}) // Non-blocking
 
     return NextResponse.json({
       success: true,
@@ -104,8 +104,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('生成 PRD 失败:', error);
-
     // Track failed PRD generation
     const duration = Math.round((Date.now() - startTime) / 1000)
     const body = await request.json().catch(() => ({}))
@@ -119,7 +117,7 @@ export async function POST(request: NextRequest) {
       status: 'failed',
       duration,
       error: error instanceof Error ? error.message : 'Unknown error'
-    }).catch(console.error) // Non-blocking
+    }).catch(() => {}) // Non-blocking
 
     return NextResponse.json(
       {

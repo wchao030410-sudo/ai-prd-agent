@@ -9,7 +9,6 @@ export async function GET() {
       data: sessions,
     });
   } catch (error) {
-    console.error('获取会话列表失败:', error);
     return NextResponse.json(
       {
         success: false,

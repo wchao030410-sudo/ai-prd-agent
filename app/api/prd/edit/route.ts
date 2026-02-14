@@ -118,7 +118,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('编辑 PRD 失败:', error);
     return NextResponse.json(
       {
         success: false,

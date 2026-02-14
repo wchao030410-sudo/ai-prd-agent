@@ -88,16 +88,11 @@ async function generateAndValidateDiagram(
     const validation = await validateMermaidCode(code);
 
     if (validation.valid) {
-      console.log(`图表生成成功，尝试次数: ${attempt}`);
       return code;
     }
 
-    console.warn(`图表生成失败（尝试 ${attempt}/${maxRetries}): ${validation.error}`);
-    console.warn('生成的代码:', code.substring(0, 200));
-
     // 如果是最后一次尝试，仍然返回代码（让前端处理错误）
     if (attempt === maxRetries) {
-      console.error('达到最大重试次数，返回可能包含错误的代码');
       return code;
     }
   }
@@ -152,14 +147,10 @@ export async function POST(request: NextRequest) {
     };
 
     // 串行生成四个图表（带验证和重试机制）
-    console.log('开始生成图表...');
-
     const architectureCode = await generateAndValidateDiagram(ARCHITECTURE_DIAGRAM_PROMPT(prdData));
     const journeyCode = await generateAndValidateDiagram(JOURNEY_DIAGRAM_PROMPT(prdData));
     const featuresCode = await generateAndValidateDiagram(FEATURES_DIAGRAM_PROMPT(prdData));
     const dataflowCode = await generateAndValidateDiagram(DATAFLOW_DIAGRAM_PROMPT(prdData));
-
-    console.log('所有图表生成完成');
 
     // 清理和修复返回的 Mermaid 代码
     const cleanCode = (code: string): string => {
@@ -212,7 +203,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('生成图表失败:', error);
     return NextResponse.json(
       {
         success: false,

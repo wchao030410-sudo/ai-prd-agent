@@ -1,11 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  experimental: {
-    serverComponents: false, // Disable React Server Components for better compatibility
-  },
-  server: '0.0.0.0'
+  // Next.js 16+ config
+  // Turbopack is enabled by default in dev mode
 };
 
 export default nextConfig;
