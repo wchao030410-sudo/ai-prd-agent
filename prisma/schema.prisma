@@ -17,8 +17,16 @@ model Session {
   currentStep Int      @default(1)  // 当前在第几步 (1/2/3)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  // NEW: Anonymous tracking fields
+  anonymousId String   @default("unknown")
+  sessionId   String?  @unique
+
   messages    Message[]
   prd         PRD?
+
+  @@index([anonymousId])
+  @@index([sessionId])
 }
 
 // 消息：保存对话历史
@@ -65,4 +73,49 @@ model AnalysisLog {
   input     String
   output    String
   createdAt DateTime @default(now())
+}
+
+// NEW: Track all analytics events
+model AnalyticsEvent {
+  id          String   @id @default(cuid())
+  eventType   String   // prd_generated, prd_failed, page_view, etc.
+  anonymousId String
+  sessionId   String?
+
+  // Event metadata (JSON stored as string)
+  metadata    String?  // JSON string
+
+  // Performance metrics
+  duration    Int?     // for timing events
+
+  createdAt   DateTime @default(now())
+
+  @@index([eventType])
+  @@index([anonymousId])
+  @@index([createdAt])
+}
+
+// NEW: Aggregated daily statistics
+model DailyStats {
+  id          String   @id @default(cuid())
+  date        DateTime // SQLite stores full datetime
+
+  // User metrics (anonymous)
+  uniqueUsers Int      @default(0)
+  totalVisits Int      @default(0)
+
+  // PRD metrics
+  prdGenerated Int     @default(0)
+  prdSuccess   Float   @default(0)  // success rate
+  avgDuration  Float?  // average generation time in seconds
+
+  // System metrics
+  totalTokens  Int     @default(0)
+  errorCount   Int     @default(0)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([date])
+  @@index([date])
 }
