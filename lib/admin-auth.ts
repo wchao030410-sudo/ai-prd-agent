@@ -8,7 +8,14 @@ export async function verifyAdminPassword(password: string): Promise<boolean> {
     return false
   }
 
-  return await compare(password, ADMIN_PASSWORD_HASH)
+  console.log('=== DEBUG: Password Verification ===')
+  console.log('Hash from env:', ADMIN_PASSWORD_HASH)
+  console.log('Input password:', password)
+
+  const result = await compare(password, ADMIN_PASSWORD_HASH)
+  console.log('Comparison result:', result)
+
+  return result
 }
 
 // Generate hash for environment variable
