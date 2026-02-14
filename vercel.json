@@ -1,0 +1,15 @@
+{
+  "buildCommand": "prisma generate && next build",
+  "devCommand": "next dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "regions": ["hkg1"],
+  "env": {
+    "ZHIPU_API_KEY": {
+      "description": "智谱AI API密钥 - 从 https://open.bigmodel.cn/usercenter/apikeys 获取"
+    },
+    "DATABASE_URL": {
+      "description": "生产环境数据库连接字符串（Vercel Postgres）"
+    }
+  }
+}
