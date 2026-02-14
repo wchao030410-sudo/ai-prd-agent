@@ -2,27 +2,5 @@
   "buildCommand": "prisma generate && next build",
   "devCommand": "next dev",
   "installCommand": "npm install",
-  "framework": "nextjs",
-  "env": {
-    "ZHIPU_API_KEY": {
-      "description": "智谱AI API密钥 - 从 https://open.bigmodel.cn/usercenter/apikeys 获取",
-      "value": ""
-    },
-    "DATABASE_URL": {
-      "description": "生产环境数据库连接字符串（Vercel Postgres 或其他）",
-      "value": ""
-    },
-    "ADMIN_PASSWORD_HASH": {
-      "description": "管理员密码哈希 - 使用 node -e \"console.log(require('bcrypt').hashSync('your-password', 10))\" 生成",
-      "value": ""
-    },
-    "ADMIN_JWT_SECRET": {
-      "description": "JWT签名密钥 - 至少32位随机字符串",
-      "value": ""
-    },
-    "NEXT_PUBLIC_APP_URL": {
-      "description": "应用访问URL（部署后自动设置）",
-      "value": ""
-    }
-  }
+  "framework": "nextjs"
 }
