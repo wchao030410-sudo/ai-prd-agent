@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AnonymousUserProvider } from "@/components/AnonymousUserProvider";
+import { PageViewTracker } from "@/components/PageViewTracker";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -30,6 +31,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AnonymousUserProvider>
+          <PageViewTracker />
           <ErrorBoundary>
             {children}
           </ErrorBoundary>
