@@ -4,9 +4,17 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 // Session 相关操作
-export async function createSession(title: string) {
+export async function createSession(
+  title: string,
+  anonymousId?: string,
+  sessionId?: string
+) {
   return prisma.session.create({
-    data: { title },
+    data: {
+      title,
+      anonymousId: anonymousId || 'unknown',
+      sessionId
+    },
   });
 }
 

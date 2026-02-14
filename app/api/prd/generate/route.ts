@@ -4,13 +4,21 @@ import { PRD_GENERATION_PROMPT, SYSTEM_PROMPT } from '@/lib/prompts/prd-template
 import { createSession, createPRD, createMessage, updateSession } from '@/lib/db';
 import { PRDDocument } from '@/types/prd';
 import { z } from 'zod';
+import { trackPRDGeneration } from '@/lib/analytics';
+import { getAnonymousIdFromCookie } from '@/lib/anonymous-user';
 
 // PRD 数据验证 schema
 const GeneratePRDSchema = z.object({
   idea: z.string().min(10, '产品想法至少需要10个字符'),
+  anonymousId: z.string().optional(),
+  sessionId: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now()
+  let anonymousId: string = 'unknown'
+  let sessionId: string | undefined = undefined
+
   try {
     const body = await request.json();
 
@@ -23,10 +31,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { idea } = result.data;
+    const { idea, anonymousId: reqAnonymousId, sessionId: reqSessionId } = result.data;
+    anonymousId = reqAnonymousId || getAnonymousIdFromCookie(request);
+    sessionId = reqSessionId || undefined;
 
     // 创建新会话
-    const session = await createSession(idea.slice(0, 50));
+    const session = await createSession(idea.slice(0, 50), anonymousId, sessionId);
 
     // 保存用户消息
     await createMessage(session.id, 'user', idea);
@@ -74,6 +84,17 @@ export async function POST(request: NextRequest) {
     // 更新会话标题
     await updateSession(session.id, { title: prdData.title });
 
+    // Track successful PRD generation
+    const duration = Math.round((Date.now() - startTime) / 1000)
+    trackPRDGeneration({
+      anonymousId,
+      sessionId,
+      title: prdData.title,
+      status: 'success',
+      duration,
+      tokensUsed: 0 // TODO: Extract from AI response if available
+    }).catch(console.error) // Non-blocking
+
     return NextResponse.json({
       success: true,
       data: {
@@ -84,6 +105,22 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('生成 PRD 失败:', error);
+
+    // Track failed PRD generation
+    const duration = Math.round((Date.now() - startTime) / 1000)
+    const body = await request.json().catch(() => ({}))
+    const trackedAnonymousId = body.anonymousId || anonymousId
+    const trackedSessionId = body.sessionId || sessionId
+
+    trackPRDGeneration({
+      anonymousId: trackedAnonymousId,
+      sessionId: trackedSessionId,
+      title: body.idea?.slice(0, 50) || 'Unknown',
+      status: 'failed',
+      duration,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }).catch(console.error) // Non-blocking
+
     return NextResponse.json(
       {
         success: false,
