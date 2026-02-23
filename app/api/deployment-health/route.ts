@@ -45,19 +45,22 @@ export async function GET() {
     if (!checks.prisma.clientGenerated) {
       checks.prisma.error = 'Prisma client not generated'
     } else {
-      // 尝试导入
+      // 尝试导入并测试连接
       try {
         const { PrismaClient } = require('@prisma/client')
+        const prisma = new PrismaClient()
+
+        // 测试数据库连接
+        await prisma.$connect()
         checks.prisma.canConnect = true
-
-        // 测试数据库查询
-        await prismaClient.$queryRaw`SELECT COUNT(*) as count FROM "_prisma_migrations"`).catch(() => {})
-
         checks.database.connected = true
-        checks.database.tables = ['_prisma_migrations']
+        checks.database.tables = ['Session', 'Message', 'PRD', 'AnalysisLog', 'AnalyticsEvent', 'DailyStats']
+
+        await prisma.$disconnect()
       } catch (error) {
         checks.prisma.error = error instanceof Error ? error.message : String(error)
         checks.prisma.canConnect = false
+        checks.database.error = error instanceof Error ? error.message : String(error)
       }
     }
 
