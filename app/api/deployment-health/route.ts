@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server'
  * 用于检查部署环境的配置状态
  */
 export async function GET() {
-  const checks = {
+  const checks: any = {
     timestamp: new Date().toISOString(),
     env: {
       // 环境变量检查
@@ -31,6 +31,7 @@ export async function GET() {
     api: {
       // API 测试
       zhipuReachable: false,
+      zhipuError: null as string | null,
       adminAuthWorking: false,
     },
   }
@@ -57,52 +58,55 @@ export async function GET() {
         checks.database.tables = ['Session', 'Message', 'PRD', 'AnalysisLog', 'AnalyticsEvent', 'DailyStats']
 
         await prisma.$disconnect()
-      } catch (error) {
+      } catch (error: any) {
         checks.prisma.error = error instanceof Error ? error.message : String(error)
         checks.prisma.canConnect = false
         checks.database.error = error instanceof Error ? error.message : String(error)
       }
     }
+  } catch (error: any) {
+    checks.prisma.error = error instanceof Error ? error.message : String(error)
+  }
 
-    // 测试 Zhipu API
-    if (checks.env.zhipuApiKey) {
-      try {
-        const testResponse = await fetch('https://open.bigmodel.cn/api/user/assistant', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.ZHIPU_API_KEY}`,
-          },
-          body: JSON.stringify({
-            model: 'glm-4',
-            messages: [{ role: 'user', content: 'test' }]
-          })
+  // 测试 Zhipu API
+  if (checks.env.zhipuApiKey) {
+    try {
+      const testResponse = await fetch('https://open.bigmodel.cn/api/user/assistant', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.ZHIPU_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'glm-4',
+          messages: [{ role: 'user', content: 'test' }]
         })
+      })
 
-        if (testResponse.ok) {
-          checks.api.zhipuReachable = true
-        } else {
-          checks.api.zhipuError = `HTTP ${testResponse.status}`
-        }
-      } catch (error) {
-        checks.api.zhipuError = error instanceof Error ? error.message : String(error)
+      if (testResponse.ok) {
+        checks.api.zhipuReachable = true
+      } else {
+        checks.api.zhipuError = `HTTP ${testResponse.status}`
       }
+    } catch (error: any) {
+      checks.api.zhipuError = error instanceof Error ? error.message : String(error)
     }
+  }
 
-    // 测试管理员认证
-    if (checks.env.adminPasswordHash && checks.env.adminJwtSecret) {
-      const crypto = require('crypto')
-      const testToken = crypto.createHash('sha256', Date.now().toString()).toString('base64').substring(0, 32)
+  // 测试管理员认证
+  if (checks.env.adminPasswordHash && checks.env.adminJwtSecret) {
+    const crypto = require('crypto')
+    const testToken = crypto.createHash('sha256', Date.now().toString()).toString('base64').substring(0, 32)
 
-      // 模拟 JWT 验证
-      checks.api.adminAuthWorking = true
-    }
+    // 模拟 JWT 验证
+    checks.api.adminAuthWorking = true
+  }
 
-    // 检查 Next.js 配置
-    checks.nextConfig = {
-      runtime: process.env.NEXT_RUNTIME || 'unknown',
-      nodeEnv: process.env.NODE_ENV || 'development',
-    }
+  // 检查 Next.js 配置
+  checks.nextConfig = {
+    runtime: process.env.NEXT_RUNTIME || 'unknown',
+    nodeEnv: process.env.NODE_ENV || 'development',
+  }
 
-    return NextResponse.json({ checks })
+  return NextResponse.json({ checks })
 }
