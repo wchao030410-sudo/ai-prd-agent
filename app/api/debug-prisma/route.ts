@@ -8,19 +8,41 @@ export async function GET() {
     const schemaPath = join(process.cwd(), 'prisma', 'schema.prisma')
     const schemaContent = readFileSync(schemaPath, 'utf-8')
 
-    // 提取 datasource 配置
-    const datasourceMatch = schemaContent.match(/datasource db \{([^}]+)\}/s)
-    const datasourceConfig = datasourceMatch ? datasourceMatch[1].trim() : 'Not found'
+    // 提取 datasource 配置（不使用 's' flag，改用字符匹配）
+    const lines = schemaContent.split('\n')
+    let inDatasource = false
+    let datasourceConfig = ''
+    let braceCount = 0
+
+    for (const line of lines) {
+      if (line.includes('datasource db')) {
+        inDatasource = true
+        braceCount = (line.match(/\{/g) || []).length - (line.match(/\}/g) || []).length
+        datasourceConfig += line + '\n'
+        continue
+      }
+
+      if (inDatasource) {
+        braceCount += (line.match(/\{/g) || []).length - (line.match(/\}/g) || []).length
+        datasourceConfig += line + '\n'
+
+        if (braceCount === 0) {
+          break
+        }
+      }
+    }
+
+    const datasourceConfigTrimmed = datasourceConfig.trim()
 
     // 提取 provider
-    const providerMatch = datasourceConfig.match(/provider\s+=\s+"(\w+)"/)
+    const providerMatch = datasourceConfigTrimmed.match(/provider\s+=\s+"(\w+)"/)
     const provider = providerMatch ? providerMatch[1] : 'unknown'
 
     return NextResponse.json({
       timestamp: new Date().toISOString(),
       prisma: {
         datasourceProvider: provider,
-        fullDatasourceConfig: datasourceConfig,
+        fullDatasourceConfig: datasourceConfigTrimmed,
         schemaPath,
         fileExists: true
       },
@@ -29,7 +51,7 @@ export async function GET() {
         databaseUrl: process.env.DATABASE_URL ? 'Set (hidden)' : 'NOT SET'
       }
     })
-  } catch (error) {
+  } catch (error: any) {
     return NextResponse.json({
       error: 'Failed to read Prisma schema',
       message: error instanceof Error ? error.message : String(error),

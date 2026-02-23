@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 
 export async function GET() {
-  const checks = {
+  const checks: any = {
     timestamp: new Date().toISOString(),
     env: {
       NODE_ENV: process.env.NODE_ENV,
@@ -22,7 +22,7 @@ export async function GET() {
     await prisma.$connect()
     await prisma.$disconnect()
     checks.prisma = { status: '✓ OK', message: 'Database connection successful' }
-  } catch (error) {
+  } catch (error: any) {
     checks.prisma = {
       status: '✗ Failed',
       message: error instanceof Error ? error.message : 'Unknown error',
