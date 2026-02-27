@@ -12,6 +12,12 @@ const GeneratePRDSchema = z.object({
   idea: z.string().min(10, '产品想法至少需要10个字符'),
   anonymousId: z.string().optional(),
   sessionId: z.string().optional(),
+  // 新增：澄清回答数组
+  clarifications: z.array(z.object({
+    question: z.string(),
+    answer: z.string(),
+    skipped: z.boolean().optional(),
+  })).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -31,7 +37,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { idea, anonymousId: reqAnonymousId, sessionId: reqSessionId } = result.data;
+    const { idea, anonymousId: reqAnonymousId, sessionId: reqSessionId, clarifications } = result.data;
     anonymousId = reqAnonymousId || getAnonymousIdFromCookie(request);
     sessionId = reqSessionId || undefined;
 
@@ -41,8 +47,22 @@ export async function POST(request: NextRequest) {
     // 保存用户消息
     await createMessage(session.id, 'user', idea);
 
+    // 构建增强的 Prompt
+    let enhancedIdea = idea;
+    if (clarifications && clarifications.length > 0) {
+      const clarificationText = clarifications
+        .filter(c => !c.skipped)
+        .map(c => `Q: ${c.question}\nA: ${c.answer}`)
+        .join('\n\n');
+
+      enhancedIdea = `${idea}
+
+用户补充信息：
+${clarificationText}`;
+    }
+
     // 生成 PRD
-    const prompt = PRD_GENERATION_PROMPT(idea);
+    const prompt = PRD_GENERATION_PROMPT(enhancedIdea);
     const { content, usage } = await chatWithResponse(SYSTEM_PROMPT, prompt, [], 'json_object');
 
     // 解析 JSON 响应
