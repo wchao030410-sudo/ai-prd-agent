@@ -6,7 +6,7 @@ import { generateDocxFromMarkdown } from '@/lib/export/docx-generator';
 // 导出请求验证 schema
 const ExportPRDSchema = z.object({
   sessionId: z.string().min(1, '会话 ID 不能为空'),
-  format: z.enum(['md', 'pdf', 'docx']),
+  format: z.enum(['md', 'docx']),  // 移除 'pdf'
 });
 
 /**
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('sessionId');
-    const format = searchParams.get('format') as 'md' | 'pdf' | 'docx';
+    const format = searchParams.get('format') as 'md' | 'docx';  // 移除 'pdf'
 
     // 验证请求
     if (!sessionId || !format) {
@@ -74,16 +74,6 @@ export async function GET(request: NextRequest) {
             'Content-Disposition': `attachment; filename*=UTF-8''${encodedFilename}`,
           },
         });
-
-      case 'pdf':
-        // PDF 格式 - 暂不支持
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'PDF 导出功能暂不可用，请使用 Word 或 Markdown 格式导出',
-          },
-          { status: 501 }
-        );
 
       case 'docx':
         // Word (DOCX) 格式

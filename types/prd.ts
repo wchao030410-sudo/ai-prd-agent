@@ -91,7 +91,7 @@ export interface FinalPRD {
 }
 
 // 导出格式类型
-export type ExportFormat = 'pdf' | 'md' | 'docx';
+export type ExportFormat = 'md' | 'docx';  // 移除 'pdf'
 
 // 工作流步骤类型
 export interface WorkflowStep {
