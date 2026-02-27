@@ -15,7 +15,7 @@ export interface PDFGenerationOptions {
 /**
  * 将 PDFDocument 输出转换为 Buffer
  */
-function pdfKitToBuffer(pdfDoc: PDFDocument): Promise<Buffer> {
+function pdfKitToBuffer(pdfDoc: any): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     const stream: Readable = pdfDoc.pipe(
@@ -121,7 +121,7 @@ export async function generatePDF(
  * 生成 PDF 内容
  */
 function generateContent(
-  doc: PDFDocument,
+  doc: any,
   markdown: string,
   title: string,
   font: any
