@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -80,6 +80,9 @@ export default function Home() {
     dataflow: 'idle',
   });
 
+  // 用于跟踪当前操作的会话 ID，防止会话切换时的竞态条件
+  const operatingSessionIdRef = useRef<string | null>(null);
+
   // 加载会话列表
   useEffect(() => {
     loadSessions();
@@ -103,7 +106,8 @@ export default function Home() {
   const handleGeneratePRD = async () => {
     if (!idea.trim()) return;
     setLoading(true);
-    setShowProgress(true);
+    // 不在输入分析阶段显示思考进度
+    // setShowProgress(true);
     setError('');
     setCurrentPRD(null);
     setSelectedSession(null);
@@ -121,6 +125,13 @@ export default function Home() {
         body: JSON.stringify({ idea }),
       });
 
+      // 处理非 200 响应
+      if (!analyzeResponse.ok) {
+        const errorData = await analyzeResponse.json();
+        const errorMsg = errorData.details?.[0]?.message || errorData.error || '输入分析失败';
+        throw new Error(errorMsg);
+      }
+
       const analyzeResult = await analyzeResponse.json();
 
       setClarificationState(prev => ({ ...prev, isAnalyzing: false }));
@@ -133,7 +144,8 @@ export default function Home() {
           answers: [],
           isAnalyzing: false,
         });
-        setShowProgress(false);
+        // 输入分析阶段完成，不需要显示思考进度
+        // setShowProgress(false);
         setLoading(false);
         return;
       }
@@ -141,10 +153,12 @@ export default function Home() {
       // 输入清晰，直接生成 PRD
       await generatePRD([]);
     } catch (err) {
-      setShowProgress(false);
+      // setShowProgress(false);
       setLoading(false);
       setClarificationState(prev => ({ ...prev, isAnalyzing: false }));
-      setError(err instanceof Error ? err.message : '网络错误');
+      // 显示更友好的错误提示
+      const errorMessage = err instanceof Error ? err.message : '网络错误';
+      setError(errorMessage);
     }
   };
 
@@ -297,8 +311,8 @@ export default function Home() {
   const handleGenerateDiagrams = async () => {
     if (!selectedSession) return;
 
-    // Store the current session ID to prevent race conditions
-    const currentSessionId = selectedSession.id;
+    // 存储当前操作的会话 ID，防止会话切换时的竞态条件
+    operatingSessionIdRef.current = selectedSession.id;
 
     setLoading(true);
     setError('');
@@ -318,14 +332,14 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ sessionId: currentSessionId }),
+        body: JSON.stringify({ sessionId: operatingSessionIdRef.current }),
       });
 
       const result = await response.json();
 
-      // CRITICAL: Only update state if we haven't switched sessions
-      if (selectedSession?.id !== currentSessionId) {
-        return; // User switched sessions, discard this result
+      // 关键：只有在当前会话仍然是操作会话时才更新状态
+      if (selectedSession?.id !== operatingSessionIdRef.current) {
+        return; // 用户切换了会话，丢弃结果
       }
 
       if (result.success) {
@@ -353,8 +367,8 @@ export default function Home() {
         setError(result.error || '生成图表失败');
       }
     } catch (err) {
-      // Only update error state if we haven't switched sessions
-      if (selectedSession?.id !== currentSessionId) {
+      // 关键：只有在当前会话仍然是操作会话时才更新状态
+      if (selectedSession?.id !== operatingSessionIdRef.current) {
         return;
       }
       setDiagramStatus({
@@ -365,10 +379,12 @@ export default function Home() {
       });
       setError(err instanceof Error ? err.message : '生成图表失败');
     } finally {
-      // Only clear loading state if we haven't switched sessions
-      if (selectedSession?.id === currentSessionId) {
+      // 关键：只有在当前会话仍然是操作会话时才清除加载状态
+      if (selectedSession?.id === operatingSessionIdRef.current) {
         setLoading(false);
       }
+      // 清除操作会话 ID
+      operatingSessionIdRef.current = null;
     }
   };
 
@@ -376,8 +392,8 @@ export default function Home() {
   const handleFinalizePRD = async () => {
     if (!selectedSession) return;
 
-    // Store the current session ID to prevent race conditions
-    const currentSessionId = selectedSession.id;
+    // 存储当前操作的会话 ID，防止会话切换时的竞态条件
+    operatingSessionIdRef.current = selectedSession.id;
 
     setLoading(true);
     setError('');
@@ -388,14 +404,14 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ sessionId: currentSessionId }),
+        body: JSON.stringify({ sessionId: operatingSessionIdRef.current }),
       });
 
       const result = await response.json();
 
-      // CRITICAL: Only update state if we haven't switched sessions
-      if (selectedSession?.id !== currentSessionId) {
-        return; // User switched sessions, discard this result
+      // 关键：只有在当前会话仍然是操作会话时才更新状态
+      if (selectedSession?.id !== operatingSessionIdRef.current) {
+        return; // 用户切换了会话，丢弃结果
       }
 
       if (result.success) {
@@ -405,16 +421,18 @@ export default function Home() {
         setError(result.error || '生成最终 PRD 失败');
       }
     } catch (err) {
-      // Only update error state if we haven't switched sessions
-      if (selectedSession?.id !== currentSessionId) {
+      // 关键：只有在当前会话仍然是操作会话时才更新状态
+      if (selectedSession?.id !== operatingSessionIdRef.current) {
         return;
       }
       setError(err instanceof Error ? err.message : '生成最终 PRD 失败');
     } finally {
-      // Only clear loading state if we haven't switched sessions
-      if (selectedSession?.id === currentSessionId) {
+      // 关键：只有在当前会话仍然是操作会话时才清除加载状态
+      if (selectedSession?.id === operatingSessionIdRef.current) {
         setLoading(false);
       }
+      // 清除操作会话 ID
+      operatingSessionIdRef.current = null;
     }
   };
 
