@@ -88,7 +88,7 @@ export async function generatePDF(
         .then(response => response.arrayBuffer())
         .then(fontBuffer => {
           // 注册中文字体
-          doc.registerFont('Chinese', 'SourceHanSansCN', fontBuffer);
+          doc.registerFont('Chinese', 'SourceHanSansCN', Buffer.from(fontBuffer));
           const chineseFont = doc.font('Chinese');
 
           // 开始渲染内容
