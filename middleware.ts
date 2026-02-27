@@ -7,6 +7,22 @@ const ADMIN_SECRET = new TextEncoder().encode(
 )
 
 export async function middleware(request: NextRequest) {
+  // Skip API routes - they handle their own auth
+  // API routes are called from client-side fetch which includes cookies
+  if (request.nextUrl.pathname.startsWith('/api/admin')) {
+    // Still verify API routes have the token
+    const token = request.cookies.get('admin_token')?.value
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    try {
+      await jwtVerify(token, ADMIN_SECRET)
+      return NextResponse.next()
+    } catch {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+  }
+
   // Only protect admin routes (exclude login page)
   if (request.nextUrl.pathname === '/admin/login') {
     return NextResponse.next()

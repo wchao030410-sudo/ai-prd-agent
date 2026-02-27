@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { chat } from '@/lib/ai';
+import { chatWithResponse } from '@/lib/ai';
 import { PRD_GENERATION_PROMPT, SYSTEM_PROMPT } from '@/lib/prompts/prd-template';
 import { createSession, createPRD, createMessage, updateSession } from '@/lib/db';
 import { PRDDocument } from '@/types/prd';
@@ -43,21 +43,24 @@ export async function POST(request: NextRequest) {
 
     // 生成 PRD
     const prompt = PRD_GENERATION_PROMPT(idea);
-    const response = await chat(SYSTEM_PROMPT, prompt, [], 'json_object');
+    const { content, usage } = await chatWithResponse(SYSTEM_PROMPT, prompt, [], 'json_object');
 
     // 解析 JSON 响应
     let prdData: PRDDocument;
     try {
-      prdData = JSON.parse(response);
+      prdData = JSON.parse(content);
     } catch {
       // 如果 JSON 解析失败，尝试提取 JSON 部分
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         prdData = JSON.parse(jsonMatch[0]);
       } else {
         throw new Error('AI 返回的格式不正确');
       }
     }
+
+    // 提取 token 使用量
+    const tokensUsed = usage?.total_tokens || 0;
 
     // 保存 PRD 到数据库
     const prd = await createPRD({
@@ -92,7 +95,7 @@ export async function POST(request: NextRequest) {
       title: prdData.title,
       status: 'success',
       duration,
-      tokensUsed: 0 // TODO: Extract from AI response if available
+      tokensUsed
     }).catch(() => {}) // Non-blocking
 
     return NextResponse.json({

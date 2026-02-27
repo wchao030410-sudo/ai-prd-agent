@@ -53,9 +53,20 @@ export function ExportButton({ sessionId, prdTitle, hasFinalContent }: ExportBut
           setError(result.error || '导出失败');
         }
       } else {
-        // PDF 和 Word 格式
-        const result = await response.json();
-        if (!result.success) {
+        // PDF 和 Word 格式 - 二进制文件下载
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${prdTitle.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}_PRD.${format}`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          setSuccess(`${format.toUpperCase()} 文件导出成功！`);
+        } else {
+          const result = await response.json();
           setError(result.error || '导出失败');
         }
       }
@@ -92,22 +103,6 @@ export function ExportButton({ sessionId, prdTitle, hasFinalContent }: ExportBut
         </Button>
 
         <Button
-          onClick={() => handleExport('pdf')}
-          disabled={!hasFinalContent || (loading.loading && loading.format === 'pdf')}
-          variant="outline"
-          className="gap-2"
-        >
-          {loading.loading && loading.format === 'pdf' ? (
-            <>导出中...</>
-          ) : (
-            <>
-              <File className="h-4 w-4" />
-              导出 PDF
-            </>
-          )}
-        </Button>
-
-        <Button
           onClick={() => handleExport('docx')}
           disabled={!hasFinalContent || (loading.loading && loading.format === 'docx')}
           variant="outline"
@@ -137,9 +132,9 @@ export function ExportButton({ sessionId, prdTitle, hasFinalContent }: ExportBut
       )}
 
       <p className="text-xs text-muted-foreground">
-        {hasFinalContent
-          ? '提示：PDF 和 Word 导出功能正在开发中，请先使用 Markdown 格式'
-          : '提示：需要先完成最终 PRD 生成才能导出文档'}
+        {!hasFinalContent
+          ? '提示：需要先完成最终 PRD 生成才能导出文档'
+          : '推荐：Word 格式完整支持中文；Markdown 可用任何编辑器打开'}
       </p>
     </div>
   );

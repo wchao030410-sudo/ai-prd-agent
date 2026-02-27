@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPRDBySession, getSession } from '@/lib/db';
 import { z } from 'zod';
+import { generatePDFFromMarkdown } from '@/lib/export/pdf-generator';
+import { generateDocxFromMarkdown } from '@/lib/export/docx-generator';
 
 // 导出请求验证 schema
 const ExportPRDSchema = z.object({
@@ -75,24 +77,50 @@ export async function GET(request: NextRequest) {
         });
 
       case 'pdf':
-        // PDF 格式 - 暂未实现，返回提示
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'PDF 导出功能正在开发中，请先使用 MD 格式',
-          },
-          { status: 501 }
-        );
+        // PDF 格式
+        try {
+          const pdfBuffer = await generatePDFFromMarkdown(content, filename);
+          const encodedFilename = encodeURIComponent(filename + '.pdf');
+          return new NextResponse(pdfBuffer, {
+            headers: {
+              'Content-Type': 'application/pdf',
+              'Content-Disposition': `attachment; filename*=UTF-8''${encodedFilename}`,
+              'Content-Length': pdfBuffer.length.toString(),
+            },
+          });
+        } catch (pdfError) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'PDF 生成失败',
+              details: pdfError instanceof Error ? pdfError.message : 'Unknown error',
+            },
+            { status: 500 }
+          );
+        }
 
       case 'docx':
-        // Word 格式 - 暂未实现，返回提示
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Word 导出功能正在开发中，请先使用 MD 格式',
-          },
-          { status: 501 }
-        );
+        // Word (DOCX) 格式
+        try {
+          const docxBuffer = await generateDocxFromMarkdown(content, filename);
+          const encodedFilename = encodeURIComponent(filename + '.docx');
+          return new NextResponse(docxBuffer, {
+            headers: {
+              'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              'Content-Disposition': `attachment; filename*=UTF-8''${encodedFilename}`,
+              'Content-Length': docxBuffer.length.toString(),
+            },
+          });
+        } catch (docxError) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Word 文档生成失败',
+              details: docxError instanceof Error ? docxError.message : 'Unknown error',
+            },
+            { status: 500 }
+          );
+        }
 
       default:
         return NextResponse.json(

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ChevronRight, ChevronDown, FileText, Copy, Check, Minus, Plus } from 'lucide-react';
+import { FileText, Copy, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import mermaid from 'mermaid';
 import remarkGfm from 'remark-gfm';
@@ -31,7 +31,6 @@ export function PRDDocumentPreview({ content, title }: PRDDocumentPreviewProps) 
   const [activeHeading, setActiveHeading] = useState<string>('');
   const [copiedCode, setCopiedCode] = useState<string>('');
   const contentRef = useRef<HTMLDivElement>(null);
-  const [collapsedHeadings, setCollapsedHeadings] = useState<Set<string>>(new Set());
 
   // 提取标题并生成目录
   useEffect(() => {
@@ -57,56 +56,6 @@ export function PRDDocumentPreview({ content, title }: PRDDocumentPreviewProps) 
 
     return () => clearTimeout(timer);
   }, [content]);
-
-  // 处理标题折叠/展开
-  useEffect(() => {
-    if (!contentRef.current) return;
-
-    const toggleContentVisibility = () => {
-      const headings = contentRef.current?.querySelectorAll('h1, h2, h3, h4, h5, h6');
-      if (!headings) return;
-
-      headings.forEach((heading) => {
-        const headingElem = heading as HTMLElement;
-        const headingId = headingElem.id;
-        const level = parseInt(headingElem.tagName.charAt(1));
-
-        // 只处理 h2 和 h3
-        if (level < 2 || level > 3) return;
-
-        const isCollapsed = collapsedHeadings.has(headingId);
-
-        // 找到该标题后的所有元素，直到下一个同级或更高级的标题
-        let nextElem = headingElem.nextElementSibling;
-        const elementsToToggle: HTMLElement[] = [];
-
-        while (nextElem) {
-          const nextTag = nextElem.tagName;
-          if (nextTag.match(/^H[1-6]$/)) {
-            const nextLevel = parseInt(nextTag.charAt(1));
-            if (nextLevel <= level) {
-              break;
-            }
-          }
-          elementsToToggle.push(nextElem as HTMLElement);
-          nextElem = nextElem.nextElementSibling;
-        }
-
-        // 设置显示/隐藏
-        elementsToToggle.forEach((elem) => {
-          if (isCollapsed) {
-            elem.style.display = 'none';
-            elem.dataset.collapsedBy = headingId;
-          } else if (elem.dataset.collapsedBy === headingId) {
-            elem.style.display = '';
-            delete elem.dataset.collapsedBy;
-          }
-        });
-      });
-    };
-
-    toggleContentVisibility();
-  }, [collapsedHeadings]);
 
   // 监听滚动，高亮当前章节
   useEffect(() => {
@@ -143,18 +92,6 @@ export function PRDDocumentPreview({ content, title }: PRDDocumentPreviewProps) 
         });
       }
     }, 100);
-  };
-
-  const toggleCollapse = (headingId: string) => {
-    setCollapsedHeadings((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(headingId)) {
-        newSet.delete(headingId);
-      } else {
-        newSet.add(headingId);
-      }
-      return newSet;
-    });
   };
 
   const copyCode = (code: string, id: string) => {
@@ -255,11 +192,9 @@ export function PRDDocumentPreview({ content, title }: PRDDocumentPreviewProps) 
 
   // 自定义标题渲染
   const renderHeading = (level: number, index: number) => {
-    return ({ children, node, ...props }: any) => {
+    return ({ children, ...props }: any) => {
       const text = children?.toString() || '';
       const headingId = `heading-${index}`;
-      const canCollapse = level >= 2 && level <= 3;
-      const isCollapsed = collapsedHeadings.has(headingId);
 
       const baseStyles = {
         1: 'text-4xl mt-16 mb-8 font-bold text-slate-900 dark:text-white tracking-tight border-b-2 border-blue-200 dark:border-blue-900 pb-4',
@@ -274,32 +209,12 @@ export function PRDDocumentPreview({ content, title }: PRDDocumentPreviewProps) 
 
       return (
         <div className="relative" id={headingId}>
-          <div className="flex items-start gap-2">
-            {canCollapse && (
-              <button
-                onClick={() => toggleCollapse(headingId)}
-                className="mt-1 flex-shrink-0 p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
-                aria-label={isCollapsed ? '展开' : '收起'}
-              >
-                {isCollapsed ? (
-                  <Plus className="h-4 w-4 text-slate-500" />
-                ) : (
-                  <Minus className="h-4 w-4 text-slate-500" />
-                )}
-              </button>
-            )}
-            {level === 1 && <h1 className={headingClass}>{children}</h1>}
-            {level === 2 && <h2 className={headingClass}>{children}</h2>}
-            {level === 3 && <h3 className={headingClass}>{children}</h3>}
-            {level === 4 && <h4 className={headingClass}>{children}</h4>}
-            {level === 5 && <h5 className={headingClass}>{children}</h5>}
-            {level === 6 && <h6 className={headingClass}>{children}</h6>}
-          </div>
-          {canCollapse && isCollapsed && (
-            <div className="text-sm text-slate-500 italic ml-6 mb-4">
-              (内容已折叠，点击 + 展开)
-            </div>
-          )}
+          {level === 1 && <h1 className={headingClass}>{children}</h1>}
+          {level === 2 && <h2 className={headingClass}>{children}</h2>}
+          {level === 3 && <h3 className={headingClass}>{children}</h3>}
+          {level === 4 && <h4 className={headingClass}>{children}</h4>}
+          {level === 5 && <h5 className={headingClass}>{children}</h5>}
+          {level === 6 && <h6 className={headingClass}>{children}</h6>}
         </div>
       );
     };

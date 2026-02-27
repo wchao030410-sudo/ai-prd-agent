@@ -490,32 +490,44 @@ export default function Home() {
                 {/* 判断是否有图表内容 */}
                 {diagrams && (diagrams.architecture || diagrams.journey || diagrams.features || diagrams.dataflow) ? (
                   <div className="space-y-6">
-                    {diagrams.architecture && (
+                    {diagrams.architecture && selectedSession && (
                       <MermaidChart
                         code={diagrams.architecture}
                         title="系统架构图"
                         description="展示系统的技术架构和组件关系"
+                        sessionId={selectedSession.id}
+                        diagramType="architecture"
+                        onDiagramUpdated={(newCode) => setDiagrams(prev => prev ? { ...prev, architecture: newCode } : { architecture: newCode })}
                       />
                     )}
-                    {diagrams.journey && (
+                    {diagrams.journey && selectedSession && (
                       <MermaidChart
                         code={diagrams.journey}
                         title="用户旅程图"
                         description="展示用户使用产品的完整流程和体验"
+                        sessionId={selectedSession.id}
+                        diagramType="journey"
+                        onDiagramUpdated={(newCode) => setDiagrams(prev => prev ? { ...prev, journey: newCode } : { journey: newCode })}
                       />
                     )}
-                    {diagrams.features && (
+                    {diagrams.features && selectedSession && (
                       <MermaidChart
                         code={diagrams.features}
                         title="功能模块图"
                         description="展示核心功能的模块化结构"
+                        sessionId={selectedSession.id}
+                        diagramType="features"
+                        onDiagramUpdated={(newCode) => setDiagrams(prev => prev ? { ...prev, features: newCode } : { features: newCode })}
                       />
                     )}
-                    {diagrams.dataflow && (
+                    {diagrams.dataflow && selectedSession && (
                       <MermaidChart
                         code={diagrams.dataflow}
                         title="数据流图"
                         description="展示数据在系统中的流动过程"
+                        sessionId={selectedSession.id}
+                        diagramType="dataflow"
+                        onDiagramUpdated={(newCode) => setDiagrams(prev => prev ? { ...prev, dataflow: newCode } : { dataflow: newCode })}
                       />
                     )}
 

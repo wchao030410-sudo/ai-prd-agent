@@ -99,6 +99,33 @@ export async function chat(
 }
 
 /**
+ * 聊天接口（返回完整响应，包含 token 使用量）
+ */
+export async function chatWithResponse(
+  systemPrompt: string,
+  userMessage: string,
+  conversationHistory: ChatMessage[] = [],
+  responseFormat: 'text' | 'json_object' = 'text'
+): Promise<{ content: string; usage: ChatCompletionResponse['usage'] }> {
+  const messages: ChatMessage[] = [
+    { role: 'system', content: systemPrompt },
+    ...conversationHistory,
+    { role: 'user', content: userMessage },
+  ];
+
+  const response = await chatCompletion({
+    messages,
+    temperature: 0.7,
+    responseFormat,
+  });
+
+  return {
+    content: response.choices[0].message.content,
+    usage: response.usage,
+  };
+}
+
+/**
  * 流式聊天接口（可选）
  */
 export async function* chatStream(

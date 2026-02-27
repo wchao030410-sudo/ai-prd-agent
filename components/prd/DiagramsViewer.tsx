@@ -40,6 +40,11 @@ export function DiagramsViewer({ sessionId, onDiagramsGenerated }: DiagramsViewe
     dataflow?: string;
   }>({});
 
+  // 更新单个图表的代码
+  const handleDiagramUpdate = (type: 'architecture' | 'journey' | 'features' | 'dataflow', newCode: string) => {
+    setDiagrams((prev) => ({ ...prev, [type]: newCode }));
+  };
+
   // 生成单个图表
   const generateDiagram = async (type: 'architecture' | 'journey' | 'features' | 'dataflow') => {
     setSteps((prev) => ({ ...prev, [type]: 'loading' }));
@@ -210,6 +215,9 @@ export function DiagramsViewer({ sessionId, onDiagramsGenerated }: DiagramsViewe
             code={diagrams.architecture}
             title="系统架构图"
             description="展示系统的技术架构和组件关系"
+            sessionId={sessionId}
+            diagramType="architecture"
+            onDiagramUpdated={(newCode) => handleDiagramUpdate('architecture', newCode)}
           />
         )}
 
@@ -218,6 +226,9 @@ export function DiagramsViewer({ sessionId, onDiagramsGenerated }: DiagramsViewe
             code={diagrams.journey}
             title="用户旅程图"
             description="展示用户使用产品的完整流程和体验"
+            sessionId={sessionId}
+            diagramType="journey"
+            onDiagramUpdated={(newCode) => handleDiagramUpdate('journey', newCode)}
           />
         )}
 
@@ -226,6 +237,9 @@ export function DiagramsViewer({ sessionId, onDiagramsGenerated }: DiagramsViewe
             code={diagrams.features}
             title="功能模块图"
             description="展示核心功能的模块化结构"
+            sessionId={sessionId}
+            diagramType="features"
+            onDiagramUpdated={(newCode) => handleDiagramUpdate('features', newCode)}
           />
         )}
 
@@ -234,6 +248,9 @@ export function DiagramsViewer({ sessionId, onDiagramsGenerated }: DiagramsViewe
             code={diagrams.dataflow}
             title="数据流图"
             description="展示数据在系统中的流动过程"
+            sessionId={sessionId}
+            diagramType="dataflow"
+            onDiagramUpdated={(newCode) => handleDiagramUpdate('dataflow', newCode)}
           />
         )}
       </div>

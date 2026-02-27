@@ -7,7 +7,7 @@ import { z } from 'zod';
 // 图表编辑请求验证 schema
 const EditDiagramSchema = z.object({
   sessionId: z.string().min(1, '会话 ID 不能为空'),
-  diagramType: z.enum(['architecture', 'journey', 'features']),
+  diagramType: z.enum(['architecture', 'journey', 'features', 'dataflow']),
   instruction: z.string().min(1, '编辑指令不能为空'),
 });
 
@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
       architecture: 'mermaidArchitecture',
       journey: 'mermaidJourney',
       features: 'mermaidFeatures',
+      dataflow: 'mermaidDataflow',
     } as const;
 
     const field = diagramFieldMap[diagramType];
@@ -92,6 +93,7 @@ export async function POST(request: NextRequest) {
       architecture: '系统架构图',
       journey: '用户旅程图',
       features: '功能模块图',
+      dataflow: '数据流图',
     };
 
     await createMessage(

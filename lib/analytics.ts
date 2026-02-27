@@ -45,6 +45,19 @@ export async function trackPRDGeneration(params: {
   // Update daily stats
   const today = new Date()
   today.setHours(0, 0, 0, 0)
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+
+  // Count unique users for today
+  const uniqueUsersCount = await prisma.analyticsEvent.groupBy({
+    by: ['anonymousId'],
+    where: {
+      createdAt: {
+        gte: today,
+        lt: tomorrow
+      }
+    }
+  }).then(groups => groups.length)
 
   const existing = await prisma.dailyStats.findUnique({
     where: { date: today }
@@ -64,13 +77,15 @@ export async function trackPRDGeneration(params: {
         prdGenerated: 1,
         prdSuccess: 100,
         totalTokens: params.tokensUsed || 0,
-        avgDuration: params.duration
+        avgDuration: params.duration,
+        uniqueUsers: uniqueUsersCount
       },
       update: {
         prdGenerated: newGenerated,
         prdSuccess: newSuccessRate,
         totalTokens: { increment: params.tokensUsed || 0 },
         avgDuration: params.duration,
+        uniqueUsers: uniqueUsersCount,
         updatedAt: new Date()
       }
     })
@@ -85,12 +100,14 @@ export async function trackPRDGeneration(params: {
         date: today,
         prdGenerated: 1,
         prdSuccess: 0,
-        errorCount: 1
+        errorCount: 1,
+        uniqueUsers: uniqueUsersCount
       },
       update: {
         prdGenerated: newGenerated,
         prdSuccess: newSuccessRate,
-        errorCount: { increment: 1 }
+        errorCount: { increment: 1 },
+        uniqueUsers: uniqueUsersCount
       }
     })
   }
@@ -107,10 +124,26 @@ export async function trackPageView(anonymousId: string, sessionId: string, path
   // Update daily visit count
   const today = new Date()
   today.setHours(0, 0, 0, 0)
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+
+  // Count unique users for today
+  const uniqueUsersCount = await prisma.analyticsEvent.groupBy({
+    by: ['anonymousId'],
+    where: {
+      createdAt: {
+        gte: today,
+        lt: tomorrow
+      }
+    }
+  }).then(groups => groups.length)
 
   await prisma.dailyStats.upsert({
     where: { date: today },
-    create: { date: today, totalVisits: 1 },
-    update: { totalVisits: { increment: 1 } }
+    create: { date: today, totalVisits: 1, uniqueUsers: uniqueUsersCount },
+    update: {
+      totalVisits: { increment: 1 },
+      uniqueUsers: uniqueUsersCount
+    }
   })
 }

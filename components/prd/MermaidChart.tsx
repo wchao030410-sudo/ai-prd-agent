@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Loader2, Maximize2, Minimize2, Copy, Check, Code } from 'lucide-react';
+import { AlertCircle, Loader2, Maximize2, Minimize2, Copy, Check, Code, Edit3 } from 'lucide-react';
 import mermaid from 'mermaid';
 
 interface MermaidChartProps {
@@ -12,6 +12,9 @@ interface MermaidChartProps {
   description?: string;
   isLoading?: boolean;
   error?: string;
+  sessionId?: string;
+  diagramType?: 'architecture' | 'journey' | 'features' | 'dataflow';
+  onDiagramUpdated?: (newCode: string) => void;
 }
 
 // 初始化 Mermaid（只执行一次）
@@ -29,6 +32,9 @@ export function MermaidChart({
   description,
   isLoading = false,
   error: externalError,
+  sessionId,
+  diagramType,
+  onDiagramUpdated,
 }: MermaidChartProps) {
   const [svgContent, setSvgContent] = useState<string>('');
   const [internalError, setInternalError] = useState<string | null>(null);
@@ -36,6 +42,9 @@ export function MermaidChart({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showSource, setShowSource] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editInstruction, setEditInstruction] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const error = externalError || internalError;
 
@@ -87,6 +96,38 @@ export function MermaidChart({
       navigator.clipboard.writeText(code);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  // 编辑图表
+  const handleEdit = async () => {
+    if (!sessionId || !diagramType || !editInstruction.trim()) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/diagrams/edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          diagramType,
+          instruction: editInstruction,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success && result.data.code) {
+        onDiagramUpdated?.(result.data.code);
+        setIsEditing(false);
+        setEditInstruction('');
+      } else {
+        setInternalError(result.error || '编辑失败');
+      }
+    } catch (err) {
+      setInternalError(err instanceof Error ? err.message : '编辑失败');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -217,6 +258,15 @@ export function MermaidChart({
           </div>
           {code && (
             <div className="flex gap-2">
+              {sessionId && diagramType ? (
+                <Button variant="ghost" size="sm" onClick={() => setIsEditing(!isEditing)} title="编辑图表">
+                  <Edit3 className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button variant="ghost" size="sm" disabled title="编辑功能需要会话ID">
+                  <Edit3 className="h-4 w-4 opacity-30" />
+                </Button>
+              )}
               <Button variant="ghost" size="sm" onClick={handleCopy}>
                 {copied ? (
                   <Check className="h-4 w-4 text-green-500" />
@@ -232,6 +282,28 @@ export function MermaidChart({
         </div>
       </CardHeader>
       <CardContent>
+        {/* 编辑面板 */}
+        {isEditing && (
+          <div className="mb-4 rounded-lg border bg-muted p-4">
+            <label className="mb-2 block text-sm font-medium">编辑图表</label>
+            <textarea
+              value={editInstruction}
+              onChange={(e) => setEditInstruction(e.target.value)}
+              placeholder="输入编辑指令，例如：添加用户认证步骤、修改数据流向等..."
+              className="mb-2 w-full rounded-md border bg-background px-3 py-2 text-sm"
+              rows={3}
+            />
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleEdit} disabled={!editInstruction.trim() || isSaving}>
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Edit3 className="mr-2 h-4 w-4" />}
+                {isSaving ? '编辑中...' : '应用编辑'}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setIsEditing(false)}>
+                取消
+              </Button>
+            </div>
+          </div>
+        )}
         {renderChartContent()}
       </CardContent>
     </Card>
