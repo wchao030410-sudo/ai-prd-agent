@@ -98,3 +98,26 @@ export interface WorkflowStep {
   step: 1 | 2 | 3;
   status: 'pending' | 'in_progress' | 'completed';
 }
+
+// 澄清问题类型
+export interface ClarificationQuestion {
+  id: string;
+  question: string;
+  type: 'choice' | 'example' | 'open';
+  options?: string[];
+  examples?: string[];
+}
+
+// 澄清回答类型
+export interface ClarificationAnswer {
+  question: string;
+  answer: string;
+  skipped?: boolean;
+}
+
+// 输入分析结果类型
+export interface InputAnalysisResult {
+  isClear: boolean;
+  confidence: number;
+  clarifyingQuestions: ClarificationQuestion[];
+}
