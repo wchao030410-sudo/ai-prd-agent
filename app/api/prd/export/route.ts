@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPRDBySession, getSession } from '@/lib/db';
 import { z } from 'zod';
-import { generatePDFFromMarkdown } from '@/lib/export/pdf-generator';
 import { generateDocxFromMarkdown } from '@/lib/export/docx-generator';
 
 // 导出请求验证 schema
@@ -77,27 +76,14 @@ export async function GET(request: NextRequest) {
         });
 
       case 'pdf':
-        // PDF 格式
-        try {
-          const pdfBuffer = await generatePDFFromMarkdown(content, filename);
-          const encodedFilename = encodeURIComponent(filename + '.pdf');
-          return new NextResponse(new Uint8Array(pdfBuffer), {
-            headers: {
-              'Content-Type': 'application/pdf',
-              'Content-Disposition': `attachment; filename*=UTF-8''${encodedFilename}`,
-              'Content-Length': pdfBuffer.length.toString(),
-            },
-          });
-        } catch (pdfError) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: 'PDF 生成失败',
-              details: pdfError instanceof Error ? pdfError.message : 'Unknown error',
-            },
-            { status: 500 }
-          );
-        }
+        // PDF 格式 - 暂不支持
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'PDF 导出功能暂不可用，请使用 Word 或 Markdown 格式导出',
+          },
+          { status: 501 }
+        );
 
       case 'docx':
         // Word (DOCX) 格式
