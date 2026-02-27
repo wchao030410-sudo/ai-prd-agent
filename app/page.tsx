@@ -25,6 +25,9 @@ import { ExportButton } from '@/components/prd/ExportButton';
 import { PRDDocumentPreview } from '@/components/prd/PRDDocumentPreview';
 import { PRDDocument, Diagrams } from '@/types/prd';
 import { safeJsonParse } from '@/lib/utils';
+import { ClarificationChat } from '@/components/prd/ClarificationChat';
+import { ProductProfilePreview } from '@/components/prd/ProductProfilePreview';
+import { ClarificationQuestion, ClarificationAnswer, InputAnalysisResult } from '@/types/prd';
 
 interface Session {
   id: string;
@@ -50,6 +53,19 @@ export default function Home() {
   const [finalMarkdown, setFinalMarkdown] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [error, setError] = useState('');
+
+  // 澄清流程状态
+  const [clarificationState, setClarificationState] = useState<{
+    show: boolean;
+    questions: ClarificationQuestion[];
+    answers: ClarificationAnswer[];
+    isAnalyzing: boolean;
+  }>({
+    show: false,
+    questions: [],
+    answers: [],
+    isAnalyzing: false,
+  });
 
   // 图表生成状态
   const [diagramStatus, setDiagramStatus] = useState<{
@@ -96,12 +112,51 @@ export default function Home() {
     setFinalMarkdown(null);
 
     try {
+      // 先分析输入质量
+      setClarificationState(prev => ({ ...prev, isAnalyzing: true }));
+
+      const analyzeResponse = await fetch('/api/prd/analyze-input', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idea }),
+      });
+
+      const analyzeResult = await analyzeResponse.json();
+
+      setClarificationState(prev => ({ ...prev, isAnalyzing: false }));
+
+      if (analyzeResult.success && !analyzeResult.data.isClear) {
+        // 输入不够清晰，显示澄清对话
+        setClarificationState({
+          show: true,
+          questions: analyzeResult.data.clarifyingQuestions,
+          answers: [],
+          isAnalyzing: false,
+        });
+        setShowProgress(false);
+        setLoading(false);
+        return;
+      }
+
+      // 输入清晰，直接生成 PRD
+      await generatePRD([]);
+    } catch (err) {
+      setShowProgress(false);
+      setLoading(false);
+      setClarificationState(prev => ({ ...prev, isAnalyzing: false }));
+      setError(err instanceof Error ? err.message : '网络错误');
+    }
+  };
+
+  const generatePRD = async (clarifications: ClarificationAnswer[]) => {
+    try {
       const response = await fetch('/api/prd/generate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ idea }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idea,
+          clarifications: clarifications.length > 0 ? clarifications : undefined,
+        }),
       });
 
       if (!response.ok) {
@@ -113,11 +168,16 @@ export default function Home() {
       if (result.success) {
         setTimeout(() => {
           setCurrentPRD(result.data.prd);
-          setSelectedSession({ id: result.data.sessionId, title: result.data.prd.title, updatedAt: new Date() });
+          setSelectedSession({
+            id: result.data.sessionId,
+            title: result.data.prd.title,
+            updatedAt: new Date()
+          });
           setShowProgress(false);
           setIdea('');
+          setClarificationState({ show: false, questions: [], answers: [], isAnalyzing: false });
           loadSessions();
-          setCurrentStep(1); // 进入 Step 1
+          setCurrentStep(1);
         }, 500);
       } else {
         setShowProgress(false);
@@ -129,6 +189,13 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleClarificationComplete = (answers: ClarificationAnswer[]) => {
+    setClarificationState(prev => ({ ...prev, answers }));
+    setLoading(true);
+    setShowProgress(true);
+    generatePRD(answers);
   };
 
   const handleNewPRD = () => {
@@ -356,7 +423,7 @@ export default function Home() {
   return (
     <div className="flex h-screen bg-background">
       {/* 侧边栏 */}
-      <aside className="w-64 border-r border-border bg-card">
+      <aside className="w-64 border-r border-border bg-card flex-shrink-0">
         <div className="p-4">
           <Button className="w-full" variant="default" onClick={handleNewPRD}>
             <Plus className="mr-2 h-4 w-4" />
@@ -404,7 +471,7 @@ export default function Home() {
       </aside>
 
       {/* 主内容区 */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden flex-shrink-0">
         {/* 顶部导航 */}
         <header className="border-b border-border px-6 py-4">
           <h1 className="text-2xl font-bold">AI PRD Agent</h1>
@@ -734,6 +801,20 @@ export default function Home() {
                   </CardContent>
                 </Card>
 
+                {/* 澄清对话 - 条件显示 */}
+                {clarificationState.show && (
+                  <div className="mt-4">
+                    <p className="text-sm text-muted-foreground mb-4 text-center">
+                      关于你的产品，我想确认几个细节...
+                    </p>
+                    <ClarificationChat
+                      questions={clarificationState.questions}
+                      onComplete={handleClarificationComplete}
+                      isLoading={loading}
+                    />
+                  </div>
+                )}
+
                 {/* 示例 */}
                 <Card>
                   <CardHeader>
@@ -764,6 +845,14 @@ export default function Home() {
           </div>
         </div>
       </main>
+
+      {/* 产品画像预览 - 条件显示 */}
+      {clarificationState.show && (
+        <ProductProfilePreview
+          answers={clarificationState.answers}
+          originalIdea={idea}
+        />
+      )}
     </div>
   );
 }
