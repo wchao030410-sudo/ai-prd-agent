@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
         try {
           const pdfBuffer = await generatePDFFromMarkdown(content, filename);
           const encodedFilename = encodeURIComponent(filename + '.pdf');
-          return new NextResponse(pdfBuffer, {
+          return new NextResponse(new Uint8Array(pdfBuffer), {
             headers: {
               'Content-Type': 'application/pdf',
               'Content-Disposition': `attachment; filename*=UTF-8''${encodedFilename}`,
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
         try {
           const docxBuffer = await generateDocxFromMarkdown(content, filename);
           const encodedFilename = encodeURIComponent(filename + '.docx');
-          return new NextResponse(docxBuffer, {
+          return new NextResponse(new Uint8Array(docxBuffer), {
             headers: {
               'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
               'Content-Disposition': `attachment; filename*=UTF-8''${encodedFilename}`,
