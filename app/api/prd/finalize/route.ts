@@ -49,45 +49,48 @@ ${prd.background ? `- **背景**：${prd.background}` : ''}
 
 ## 目标用户
 **主要用户**：
-${(prd.targetUsers.primary || []).map(u => `- ${u}`).join('\n')}
-${prd.targetUsers.secondary && prd.targetUsers.secondary.length > 0 ? `
+${(Array.isArray(prd.targetUsers?.primary) ? prd.targetUsers.primary : []).map(u => `- ${u}`).join('\n')}
+${Array.isArray(prd.targetUsers?.secondary) && prd.targetUsers.secondary.length > 0 ? `
 **次要用户**：
-${(prd.targetUsers.secondary || []).map(u => `- ${u}`).join('\n')}
+${prd.targetUsers.secondary.map(u => `- ${u}`).join('\n')}
 ` : ''}
 
 ## 用户痛点
-${(prd.painPoints || []).map(p => `- ${p}`).join('\n') || '无'}
+${(Array.isArray(prd.painPoints) ? prd.painPoints : []).map(p => `- ${p}`).join('\n') || '无'}
 
 ## 核心价值
-${(prd.coreValue || []).map(v => `- ${v}`).join('\n') || '无'}
+${(Array.isArray(prd.coreValue) ? prd.coreValue : []).map(v => `- ${v}`).join('\n') || '无'}
 
 ## 功能列表
-${(prd.features || []).map(f => `
+${(Array.isArray(prd.features) ? prd.features : []).map(f => `
 ### ${f.name}（优先级：${f.priority}，工作量：${f.effort}/5，价值：${f.value}/5）
-${f.description}
+${f.description || ''}
 
 **验收标准**：
-${(f.acceptanceCriteria || []).map(c => `- ${c}`).join('\n')}
+${(Array.isArray(f.acceptanceCriteria) ? f.acceptanceCriteria : []).map(c => `- ${c}`).join('\n')}
 `).join('\n')}
 
 ## 成功指标
-${(prd.successMetrics || []).map(m => `- ${m}`).join('\n') || '无'}
+${(Array.isArray(prd.successMetrics) ? prd.successMetrics : []).map(m => `- ${m}`).join('\n') || '无'}
 
 ## 技术可行性
 **整体评估**：${prd.techFeasibility?.overall || '未知'}
 
 **技术挑战**：
-${(prd.techFeasibility?.challenges || []).map(c => `- ${c}`).join('\n') || '无'}
+${(Array.isArray(prd.techFeasibility?.challenges) ? prd.techFeasibility.challenges : []).map(c => `- ${c}`).join('\n') || '无'}
 
 **技术建议**：
-${(prd.techFeasibility?.recommendations || []).map(r => `- ${r}`).join('\n') || '无'}
+${(Array.isArray(prd.techFeasibility?.recommendations) ? prd.techFeasibility.recommendations : []).map(r => `- ${r}`).join('\n') || '无'}
 
 ## 竞品分析
-${(prd.competitors || []).map(c => `
+${(Array.isArray(prd.competitors) ? prd.competitors : []).map(c => {
+  const features = Array.isArray(c.features) ? c.features.join('、') : (c.features || '无');
+  return `
 ### ${c.name}
-**功能**：${(c.features || []).join('、')}
+**功能**：${features}
 **差异**：${c.differences || '无差异说明'}
-`).join('\n') || '无'}
+`;
+}).join('\n') || '无'}
 
 # Mermaid 图表（必须嵌入到对应章节中）
 

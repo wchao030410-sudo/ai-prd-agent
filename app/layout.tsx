@@ -1,19 +1,24 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Playfair_Display, Lato } from "next/font/google";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AnonymousUserProvider } from "@/components/AnonymousUserProvider";
 import { PageViewTracker } from "@/components/PageViewTracker";
 import { Analytics } from '@vercel/analytics/react'
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Editorial 杂志风格字体
+const playfairDisplay = Playfair_Display({
+  variable: "--font-serif",
   subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const lato = Lato({
+  variable: "--font-sans",
   subsets: ["latin"],
+  display: "swap",
+  weight: ["300", "400", "700"],
 });
 
 export const metadata: Metadata = {
@@ -29,7 +34,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${playfairDisplay.variable} ${lato.variable} antialiased`}
       >
         <AnonymousUserProvider>
           <PageViewTracker />

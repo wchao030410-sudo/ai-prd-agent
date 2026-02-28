@@ -28,8 +28,6 @@ import { safeJsonParse } from '@/lib/utils';
 import { ClarificationChat } from '@/components/prd/ClarificationChat';
 import { ProductProfilePreview } from '@/components/prd/ProductProfilePreview';
 import { ClarificationQuestion, ClarificationAnswer, InputAnalysisResult } from '@/types/prd';
-import { useSSEGenerator } from '@/hooks/useSSEGenerator';
-import { MultiAgentProgress } from '@/components/prd/MultiAgentProgress';
 
 interface Session {
   id: string;
@@ -44,11 +42,10 @@ interface Session {
   };
 }
 
-export default function Home() {
+export default function AppPage() {
   const [idea, setIdea] = useState('');
   const [loading, setLoading] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
-  const [showHistoryMenu, setShowHistoryMenu] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [currentPRD, setCurrentPRD] = useState<PRDDocument | null>(null);
@@ -56,10 +53,6 @@ export default function Home() {
   const [finalMarkdown, setFinalMarkdown] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [error, setError] = useState('');
-  const [useMultiAgent, setUseMultiAgent] = useState(true); // 默认启用多 Agent
-
-  // SSE 实时进度
-  const { progress: sseProgress, isConnecting: sseConnecting, agents: sseAgents, error: sseError, generate: generateWithSSE, reset: resetSSE } = useSSEGenerator();
 
   // 澄清流程状态
   const [clarificationState, setClarificationState] = useState<{
@@ -113,8 +106,6 @@ export default function Home() {
   const handleGeneratePRD = async () => {
     if (!idea.trim()) return;
     setLoading(true);
-    // 不在输入分析阶段显示思考进度
-    // setShowProgress(true);
     setError('');
     setCurrentPRD(null);
     setSelectedSession(null);
@@ -151,8 +142,6 @@ export default function Home() {
           answers: [],
           isAnalyzing: false,
         });
-        // 输入分析阶段完成，不需要显示思考进度
-        // setShowProgress(false);
         setLoading(false);
         return;
       }
@@ -160,48 +149,14 @@ export default function Home() {
       // 输入清晰，直接生成 PRD
       await generatePRD([]);
     } catch (err) {
-      // setShowProgress(false);
       setLoading(false);
       setClarificationState(prev => ({ ...prev, isAnalyzing: false }));
-      // 显示更友好的错误提示
       const errorMessage = err instanceof Error ? err.message : '网络错误';
       setError(errorMessage);
     }
   };
 
   const generatePRD = async (clarifications: ClarificationAnswer[]) => {
-    // 如果启用多 Agent，使用 SSE 方式
-    if (useMultiAgent) {
-      setShowProgress(true);
-      try {
-        const result = await generateWithSSE(
-          idea,
-          clarifications.length > 0 ? clarifications : undefined,
-          true
-        );
-        if (result?.prd) {
-          setCurrentPRD(result.prd);
-          setSelectedSession({
-            id: result.sessionId,
-            title: result.prd.title,
-            updatedAt: new Date()
-          });
-          setShowProgress(false);
-          setIdea('');
-          setClarificationState({ show: false, questions: [], answers: [], isAnalyzing: false });
-          loadSessions();
-          setCurrentStep(1);
-        }
-      } catch (err) {
-        setShowProgress(false);
-        setError(err instanceof Error ? err.message : '生成失败');
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
-
-    // 原有的单 Agent 模式
     try {
       const response = await fetch('/api/prd/generate', {
         method: 'POST',
@@ -245,8 +200,7 @@ export default function Home() {
   };
 
   const handleClarificationComplete = (answers: ClarificationAnswer[]) => {
-    // 立即关闭澄清界面，进入生成流程
-    setClarificationState({ show: false, questions: [], answers: [], isAnalyzing: false });
+    setClarificationState(prev => ({ ...prev, answers }));
     setLoading(true);
     setShowProgress(true);
     generatePRD(answers);
@@ -260,9 +214,6 @@ export default function Home() {
     setCurrentStep(1);
     setError('');
     setIdea('');
-    setShowProgress(false);
-    setClarificationState({ show: false, questions: [], answers: [], isAnalyzing: false });
-    resetSSE?.();
   };
 
   const handleDeleteSession = async (sessionId: string, e: React.MouseEvent) => {
@@ -354,13 +305,11 @@ export default function Home() {
   const handleGenerateDiagrams = async () => {
     if (!selectedSession) return;
 
-    // 存储当前操作的会话 ID，防止会话切换时的竞态条件
     operatingSessionIdRef.current = selectedSession.id;
 
     setLoading(true);
     setError('');
 
-    // 重置状态
     setDiagramStatus({
       architecture: 'loading',
       journey: 'loading',
@@ -380,13 +329,11 @@ export default function Home() {
 
       const result = await response.json();
 
-      // 关键：只有在当前会话仍然是操作会话时才更新状态
       if (selectedSession?.id !== operatingSessionIdRef.current) {
-        return; // 用户切换了会话，丢弃结果
+        return;
       }
 
       if (result.success) {
-        // 直接设置所有图表数据和状态
         const diagramData = result.data.diagrams;
         setDiagrams({
           architecture: diagramData.architecture,
@@ -410,7 +357,6 @@ export default function Home() {
         setError(result.error || '生成图表失败');
       }
     } catch (err) {
-      // 关键：只有在当前会话仍然是操作会话时才更新状态
       if (selectedSession?.id !== operatingSessionIdRef.current) {
         return;
       }
@@ -422,11 +368,9 @@ export default function Home() {
       });
       setError(err instanceof Error ? err.message : '生成图表失败');
     } finally {
-      // 关键：只有在当前会话仍然是操作会话时才清除加载状态
       if (selectedSession?.id === operatingSessionIdRef.current) {
         setLoading(false);
       }
-      // 清除操作会话 ID
       operatingSessionIdRef.current = null;
     }
   };
@@ -435,7 +379,6 @@ export default function Home() {
   const handleFinalizePRD = async () => {
     if (!selectedSession) return;
 
-    // 存储当前操作的会话 ID，防止会话切换时的竞态条件
     operatingSessionIdRef.current = selectedSession.id;
 
     setLoading(true);
@@ -452,9 +395,8 @@ export default function Home() {
 
       const result = await response.json();
 
-      // 关键：只有在当前会话仍然是操作会话时才更新状态
       if (selectedSession?.id !== operatingSessionIdRef.current) {
-        return; // 用户切换了会话，丢弃结果
+        return;
       }
 
       if (result.success) {
@@ -464,17 +406,14 @@ export default function Home() {
         setError(result.error || '生成最终 PRD 失败');
       }
     } catch (err) {
-      // 关键：只有在当前会话仍然是操作会话时才更新状态
       if (selectedSession?.id !== operatingSessionIdRef.current) {
         return;
       }
       setError(err instanceof Error ? err.message : '生成最终 PRD 失败');
     } finally {
-      // 关键：只有在当前会话仍然是操作会话时才清除加载状态
       if (selectedSession?.id === operatingSessionIdRef.current) {
         setLoading(false);
       }
-      // 清除操作会话 ID
       operatingSessionIdRef.current = null;
     }
   };
@@ -482,128 +421,87 @@ export default function Home() {
   const steps = ['PRD 初稿', '可视化图表', '完整文档'];
 
   return (
-    <div className="min-h-screen editorial-paper">
-      {/* 简洁顶部导航 */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#FAF9F7]/90 dark:bg-[#1A1D23]/90 backdrop-blur-md border-b border-[#E0E3E8]/50 dark:border-[#2D3748]/50">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-sm bg-[#1A1A1A] dark:bg-[#F1F3F6] flex items-center justify-center">
-              <span className="text-white dark:text-[#1A1A1A] font-serif text-lg">P</span>
-            </div>
-            <span className="font-serif text-lg text-[#1A1A1A] dark:text-[#F1F3F6]">AI PRD Agent</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={handleNewPRD} className="font-sans text-[#6B7B8C] dark:text-[#9AA5B1] hover:text-[#1A1A1A] dark:hover:text-[#F1F3F6]">
-              <Plus className="mr-1 h-4 w-4" />
-              新建
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="font-sans text-[#6B7B8C] dark:text-[#9AA5B1] hover:text-[#1A1A1A] dark:hover:text-[#F1F3F6]"
-              onClick={() => setShowHistoryMenu(true)}
-              disabled={sessions.length === 0}
-            >
-              <MessageSquare className="mr-1 h-4 w-4" />
-              历史 {sessions.length > 0 && `(${sessions.length})`}
-            </Button>
-          </div>
+    <div className="flex h-screen bg-background">
+      {/* 侧边栏 */}
+      <aside className="w-64 border-r border-border bg-card flex-shrink-0">
+        <div className="p-4">
+          <Button className="w-full" variant="default" onClick={handleNewPRD}>
+            <Plus className="mr-2 h-4 w-4" />
+            新建 PRD
+          </Button>
         </div>
-      </header>
-
-      {/* 历史会话抽屉 */}
-      {showHistoryMenu && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          {/* 遮罩层 */}
-          <div
-            className="absolute inset-0 bg-black/20 dark:bg-black/40"
-            onClick={() => setShowHistoryMenu(false)}
-          />
-          {/* 抽屉内容 */}
-          <div className="relative w-full max-w-md bg-white dark:bg-[#1A1D23] h-full shadow-2xl animate-slide-up-editorial">
-            <div className="p-6 border-b border-[#E0E3E8] dark:border-[#2D3748]">
-              <div className="flex items-center justify-between">
-                <h3 className="font-serif text-xl text-[#1A1A1A] dark:text-[#F1F3F6]">历史会话</h3>
-                <button
-                  onClick={() => setShowHistoryMenu(false)}
-                  className="text-[#6B7B8C] dark:text-[#9AA5B1] hover:text-[#1A1A1A] dark:hover:text-[#F1F3F6]"
+        <div className="px-4 py-2">
+          <h2 className="mb-2 px-2 text-xs font-semibold text-muted-foreground">
+            会话历史
+          </h2>
+          <div className="space-y-1">
+            {sessions.length === 0 ? (
+              <p className="px-2 py-4 text-sm text-muted-foreground text-center">
+                暂无会话
+              </p>
+            ) : (
+              sessions.map((session) => (
+                <div
+                  key={session.id}
+                  className={`group flex w-full items-center gap-1 rounded-lg px-2 py-1 transition-colors ${
+                    selectedSession?.id === session.id
+                      ? 'bg-accent'
+                      : 'hover:bg-accent'
+                  }`}
                 >
-                  ✕
-                </button>
-              </div>
-            </div>
-            <div className="p-4 overflow-y-auto h-[calc(100vh-80px)]">
-              {sessions.length === 0 ? (
-                <p className="text-center text-[#6B7B8C] dark:text-[#9AA5B1] py-8 font-sans">暂无历史会话</p>
-              ) : (
-                <div className="space-y-3">
-                  {sessions.map((session) => (
-                    <div
-                      key={session.id}
-                      className={`w-full p-4 rounded-sm border transition-all duration-300 hover:border-[#1A1A1A] dark:hover:border-[#F1F3F6] group ${
-                        selectedSession?.id === session.id
-                          ? 'border-[#1A1A1A] dark:border-[#F1F3F6] bg-[#F5F3F0] dark:bg-[#2D3748]'
-                          : 'border-[#E0E3E8] dark:border-[#2D3748]'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <button
-                          className="flex-1 text-left"
-                          onClick={() => {
-                            handleLoadSession(session);
-                            setShowHistoryMenu(false);
-                          }}
-                        >
-                          <div className="font-sans text-[#1A1A1A] dark:text-[#F1F3F6] font-medium truncate">{session.title}</div>
-                          <div className="flex items-center gap-2 mt-2 text-xs text-[#6B7B8C] dark:text-[#9AA5B1]">
-                            <span>{new Date(session.updatedAt).toLocaleDateString('zh-CN')}</span>
-                            <span>·</span>
-                            <span>{new Date(session.updatedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
-                          </div>
-                        </button>
-                        <button
-                          onClick={(e) => handleDeleteSession(session.id, e)}
-                          className="ml-3 p-2 text-[#6B7B8C] dark:text-[#9AA5B1] hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="删除会话"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                  <button
+                    onClick={() => handleLoadSession(session)}
+                    className="flex min-w-0 items-center gap-2 rounded-md px-2 py-2 text-left text-sm flex-1"
+                  >
+                    <MessageSquare className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="truncate">{session.title}</span>
+                  </button>
+                  <button
+                    onClick={(e) => handleDeleteSession(session.id, e)}
+                    className="flex-shrink-0 rounded-md p-2 opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                    title="删除会话"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
-              )}
-            </div>
+              ))
+            )}
           </div>
         </div>
-      )}
-      {/* 主内容区 - 带顶部偏移 */}
-      <main className="pt-20 pb-12 px-6 flex gap-8 flex-1">
-        <div className="flex-1 max-w-5xl mx-auto">
-          {/* 错误提示 */}
-          {error && (
-            <div className="mb-8 p-4 rounded-sm border border-red-200/50 dark:border-red-800/50 bg-red-50/50 dark:bg-red-900/10 text-red-600 dark:text-red-400 font-sans text-sm animate-fade-editorial">
-              {error}
-            </div>
-          )}
+      </aside>
+
+      {/* 主内容区 */}
+      <main className="flex-1 flex flex-col overflow-hidden flex-shrink-0">
+        {/* 顶部导航 */}
+        <header className="border-b border-border px-6 py-4">
+          <h1 className="text-2xl font-bold">AI PRD Agent</h1>
+          <p className="text-sm text-muted-foreground">
+            三步生成专业的产品需求文档：初稿 → 图表 → 完整文档
+          </p>
+        </header>
+
+        {/* 内容区域 */}
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="mx-auto max-w-5xl space-y-6">
+            {/* 错误提示 */}
+            {error && (
+              <div className="rounded-lg border border-destructive bg-destructive/10 p-4 text-destructive">
+                {error}
+              </div>
+            )}
 
             {/* 步骤指示器 */}
             {currentPRD && (
-              <div className="py-8">
-                <StepIndicator current={currentStep} total={3} steps={steps} />
-              </div>
+              <StepIndicator current={currentStep} total={3} steps={steps} />
             )}
 
             {/* Step 1: PRD 初稿 + 编辑 */}
             {currentPRD && currentStep === 1 && (
-              <div className="space-y-8 animate-fade-editorial">
+              <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-xs font-sans text-[#6B7B8C] dark:text-[#9AA5B1] tracking-widest uppercase">Step 01</span>
-                    <h2 className="text-3xl font-serif text-[#1A1A1A] dark:text-[#F1F3F6] mt-1">PRD 初稿与编辑</h2>
-                  </div>
-                  <Button onClick={() => setCurrentStep(2)} className="gap-2 btn-editorial btn-editorial-primary">
-                    下一步
+                  <h2 className="text-xl font-semibold">Step 1: PRD 初稿与编辑</h2>
+                  <Button onClick={() => setCurrentStep(2)} className="gap-2">
+                    下一步：生成图表
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
@@ -629,8 +527,8 @@ export default function Home() {
 
                 {/* 底部导航按钮 */}
                 <div className="flex justify-center">
-                  <Button onClick={() => setCurrentStep(2)} className="gap-2 btn-editorial btn-editorial-primary">
-                    下一步
+                  <Button onClick={() => setCurrentStep(2)} className="gap-2">
+                    下一步：生成图表
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
@@ -644,17 +542,14 @@ export default function Home() {
                   <Button
                     onClick={() => setCurrentStep(1)}
                     variant="outline"
-                    className="gap-2 btn-editorial btn-editorial-secondary"
+                    className="gap-2"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     上一步
                   </Button>
-                  <div>
-                    <span className="text-xs font-sans text-[#6B7B8C] dark:text-[#9AA5B1] tracking-widest uppercase">Step 02</span>
-                    <h2 className="text-3xl font-serif text-[#1A1A1A] dark:text-[#F1F3F6] mt-1">可视化图表</h2>
-                  </div>
-                  <Button onClick={() => setCurrentStep(3)} className="gap-2 btn-editorial btn-editorial-primary">
-                    下一步
+                  <h2 className="text-xl font-semibold">Step 2: 可视化图表</h2>
+                  <Button onClick={() => setCurrentStep(3)} className="gap-2">
+                    下一步：完整文档
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
@@ -705,8 +600,8 @@ export default function Home() {
 
                     {/* 底部导航按钮 */}
                     <div className="flex justify-center">
-                      <Button onClick={() => setCurrentStep(3)} className="gap-2 btn-editorial btn-editorial-primary">
-                        下一步
+                      <Button onClick={() => setCurrentStep(3)} className="gap-2">
+                        下一步：完整文档
                         <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>
@@ -714,7 +609,7 @@ export default function Home() {
                 ) : (
                   <>
                     {/* 生成按钮 */}
-                    <Card className="card-editorial">
+                    <Card>
                       <CardHeader>
                         <CardTitle>生成可视化图表</CardTitle>
                         <CardDescription>
@@ -744,9 +639,9 @@ export default function Home() {
 
                     {/* 生成进度 */}
                     {loading && (
-                      <Card className="card-editorial">
+                      <Card>
                         <CardHeader>
-                          <CardTitle className="flex items-center gap-2 font-serif">
+                          <CardTitle className="flex items-center gap-2">
                             <Loader2 className="h-5 w-5 animate-spin" />
                             生成进度
                           </CardTitle>
@@ -793,28 +688,25 @@ export default function Home() {
 
             {/* Step 3: 完整文档 + 导出 */}
             {currentPRD && currentStep === 3 && (
-              <div className="space-y-8 animate-fade-editorial">
+              <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <Button
                     onClick={() => setCurrentStep(2)}
                     variant="outline"
-                    className="gap-2 btn-editorial btn-editorial-secondary"
+                    className="gap-2"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     上一步
                   </Button>
-                  <div>
-                    <span className="text-xs font-sans text-[#6B7B8C] dark:text-[#9AA5B1] tracking-widest uppercase">Step 03</span>
-                    <h2 className="text-3xl font-serif text-[#1A1A1A] dark:text-[#F1F3F6] mt-1">完整文档与导出</h2>
-                  </div>
-                  <div className="w-24" /> {/* 占位，保持居中 */}
+                  <h2 className="text-xl font-semibold">Step 3: 完整文档与导出</h2>
+                  <div className="w-24" />
                 </div>
 
                 {!finalMarkdown ? (
-                  <Card className="card-editorial">
+                  <Card>
                     <CardHeader>
-                      <CardTitle className="font-serif">生成完整 PRD 文档</CardTitle>
-                      <CardDescription className="font-sans">
+                      <CardTitle>生成完整 PRD 文档</CardTitle>
+                      <CardDescription>
                         整合 PRD 内容和可视化图表，生成可交付的完整文档
                       </CardDescription>
                     </CardHeader>
@@ -822,7 +714,7 @@ export default function Home() {
                       <Button
                         onClick={handleFinalizePRD}
                         disabled={loading}
-                        className="gap-2 btn-editorial btn-editorial-primary"
+                        className="gap-2"
                       >
                         {loading ? (
                           <>
@@ -844,10 +736,10 @@ export default function Home() {
                     <PRDDocumentPreview content={finalMarkdown} title={currentPRD.title} />
 
                     {/* 导出按钮 */}
-                    <Card className="max-w-7xl mx-auto card-editorial">
+                    <Card className="max-w-7xl mx-auto">
                       <CardHeader>
-                        <CardTitle className="font-serif">导出完整 PRD</CardTitle>
-                        <CardDescription className="font-sans">
+                        <CardTitle>导出完整 PRD</CardTitle>
+                        <CardDescription>
                           选择导出格式，下载可交付的 PRD 文档
                         </CardDescription>
                       </CardHeader>
@@ -867,83 +759,69 @@ export default function Home() {
             )}
 
             {/* 初始输入界面 */}
-            {!currentPRD && !showProgress && !clarificationState.show && (
-              <div className="space-y-16 animate-fade-editorial">
-                {/* 主标题区域 */}
-                <div className="text-center py-12">
-                  <h2 className="text-4xl md:text-5xl font-serif text-[#1A1A1A] dark:text-[#F1F3F6] leading-tight">
-                    描述你的产品想法
-                  </h2>
-                  <p className="mt-6 text-lg text-[#6B7B8C] dark:text-[#9AA5B1] font-sans max-w-xl mx-auto">
-                    AI 将深度分析需求，生成专业的 PRD 文档
-                  </p>
-                </div>
-
-                {/* 输入卡片 */}
-                <div className="max-w-2xl mx-auto">
-                  <div className="bg-white dark:bg-[#1E2532] rounded-sm border border-[#E0E3E8] dark:border-[#2D3748] p-px">
-                    <div className="p-8 space-y-6">
-                      {/* 多 Agent 切换 */}
-                      <div className="flex items-center justify-between pb-6 border-b border-[#E0E3E8] dark:border-[#2D3748]">
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-medium text-[#1A1A1A] dark:text-[#F1F3F6] font-sans">
-                            多 Agent 协作
-                          </span>
-                          <span className="text-xs text-[#6B7B8C] dark:text-[#9AA5B1] px-2 py-0.5 bg-[#F5F3F0] dark:bg-[#2D3748] rounded-sm">
-                            推荐
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => setUseMultiAgent(!useMultiAgent)}
-                          className={`relative w-11 h-6 rounded-full transition-colors duration-300 ${
-                            useMultiAgent ? 'bg-[#1A1A1A] dark:bg-[#F1F3F6]' : 'bg-[#E0E3E8] dark:bg-[#2D3748]'
-                          }`}
-                        >
-                          <span
-                            className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-300 ${
-                              useMultiAgent ? 'translate-x-5' : 'translate-x-0'
-                            }`}
-                          />
-                        </button>
-                      </div>
-
-                      <Textarea
-                        placeholder="例如：我想做一个 AI 写作助手，帮助内容创作者快速生成文章初稿..."
-                        value={idea}
-                        onChange={(e) => setIdea(e.target.value)}
-                        rows={4}
-                        className="resize-none font-sans text-lg min-h-[120px] border-0 shadow-none focus:ring-0 p-0 bg-transparent"
-                      />
-
-                      <div className="flex justify-end pt-2">
-                        <Button
-                          onClick={handleGeneratePRD}
-                          disabled={loading || !idea.trim()}
-                          className="gap-2 btn-editorial btn-editorial-primary text-base px-8 py-3"
-                        >
-                          {loading ? (
-                            <>
-                              <Loader2 className="h-5 w-5 animate-spin" />
-                              启动中...
-                            </>
-                          ) : (
-                            <>
-                              生成 PRD
-                              <FileText className="h-5 w-5" />
-                            </>
-                          )}
-                        </Button>
-                      </div>
+            {!currentPRD && !showProgress && (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Zap className="h-5 w-5" />
+                      开始新的 PRD
+                    </CardTitle>
+                    <CardDescription>
+                      描述你的产品想法，AI 将帮你生成完整的 PRD 文档
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Textarea
+                      placeholder="例如：我想做一个 AI 写作助手，帮助内容创作者快速生成文章初稿..."
+                      value={idea}
+                      onChange={(e) => setIdea(e.target.value)}
+                      rows={5}
+                      className="resize-none"
+                    />
+                    <div className="flex justify-end">
+                      <Button
+                        onClick={handleGeneratePRD}
+                        disabled={loading || !idea.trim()}
+                        className="gap-2"
+                      >
+                        {loading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            启动中...
+                          </>
+                        ) : (
+                          <>
+                            生成 PRD
+                            <FileText className="h-4 w-4" />
+                          </>
+                        )}
+                      </Button>
                     </div>
+                  </CardContent>
+                </Card>
+
+                {/* 澄清对话 - 条件显示 */}
+                {clarificationState.show && (
+                  <div className="mt-4">
+                    <p className="text-sm text-muted-foreground mb-4 text-center">
+                      关于你的产品，我想确认几个细节...
+                    </p>
+                    <ClarificationChat
+                      questions={clarificationState.questions}
+                      onComplete={handleClarificationComplete}
+                      isLoading={loading}
+                    />
                   </div>
-                </div>
+                )}
 
                 {/* 示例 */}
-                <div className="max-w-2xl mx-auto">
-                  <p className="text-xs font-sans text-[#6B7B8C] dark:text-[#9AA5B1] tracking-widest uppercase mb-6 text-center">
-                    或选择一个示例开始
-                  </p>
-                  <div className="grid gap-3">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>快速开始</CardTitle>
+                    <CardDescription>选择一个示例或输入你自己的想法</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
                     {[
                       'AI 写作助手 - 帮助内容创作者快速生成文章',
                       '智能笔记应用 - 支持语音转文字和 AI 摘要',
@@ -952,79 +830,29 @@ export default function Home() {
                       <button
                         key={i}
                         onClick={() => setIdea(example)}
-                        className="w-full text-left px-6 py-4 font-sans text-[#3A3A3A] dark:text-[#A0AEC0] bg-transparent border border-transparent hover:border-[#E0E3E8] dark:hover:border-[#2D3748] hover:bg-[#F5F3F0] dark:hover:bg-[#1E2532] rounded-sm transition-all duration-300"
+                        className="w-full rounded-lg border border-border p-3 text-left text-sm transition-colors hover:bg-accent"
                       >
                         {example}
                       </button>
                     ))}
-                  </div>
-                </div>
-              </div>
+                  </CardContent>
+                </Card>
+              </>
             )}
 
-            {/* 需求澄清弹窗 - 模态框显示 */}
-            {clarificationState.show && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                {/* 遮罩层 */}
-                <div
-                  className="absolute inset-0 bg-black/30 dark:bg-black/50 backdrop-blur-sm"
-                  onClick={() => {
-                    // 点击遮罩不关闭，让用户必须回答或跳过
-                  }}
-                />
-
-                {/* 弹窗内容 */}
-                <div className="relative w-full max-w-xl animate-fade-editorial">
-                  {/* 弹窗头部 */}
-                  <div className="text-center mb-6">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#1A1A1A] dark:bg-[#F1F3F6] text-white dark:text-[#1A1A1A] rounded-sm font-sans text-sm mb-4">
-                      <span className="w-2 h-2 bg-green-500 dark:bg-green-400 rounded-full animate-pulse" />
-                      需要你的回答
-                    </div>
-                    <h3 className="text-2xl font-serif text-[#1A1A1A] dark:text-[#F1F3F6]">
-                      关于你的产品，我想确认几个细节
-                    </h3>
-                    <p className="mt-2 text-[#6B7B8C] dark:text-[#9AA5B1] font-sans">
-                      回答以下问题，帮助 AI 更准确地理解你的需求
-                    </p>
-                  </div>
-
-                  {/* 澄清对话 */}
-                  <ClarificationChat
-                    questions={clarificationState.questions}
-                    onComplete={handleClarificationComplete}
-                    isLoading={loading}
-                  />
-
-                  {/* 取消按钮 */}
-                  <div className="text-center mt-4">
-                    <button
-                      onClick={() => {
-                        setClarificationState({ show: false, questions: [], answers: [], isAnalyzing: false });
-                        setLoading(false);
-                      }}
-                      className="text-sm text-[#6B7B8C] dark:text-[#9AA5B1] hover:text-[#1A1A1A] dark:hover:text-[#F1F3F6] font-sans"
-                    >
-                      取消，返回重新输入
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
             {/* AI 思考进度 */}
-            {showProgress && useMultiAgent && sseProgress && (
-              <MultiAgentProgress
-                agents={sseAgents}
-                overallProgress={sseProgress.progress || 0}
-                currentStage={sseProgress.message || ''}
-                message={sseProgress.message || ''}
-                isConnecting={sseConnecting}
-                onComplete={() => {}}
-              />
-            )}
-            {showProgress && !useMultiAgent && <ThinkingIndicator onComplete={() => {}} />}
+            {showProgress && <ThinkingIndicator onComplete={() => {}} />}
           </div>
+        </div>
       </main>
+
+      {/* 产品画像预览 - 条件显示 */}
+      {clarificationState.show && (
+        <ProductProfilePreview
+          answers={clarificationState.answers}
+          originalIdea={idea}
+        />
+      )}
     </div>
   );
 }

@@ -117,7 +117,9 @@ export interface ClarificationAnswer {
 
 // 输入分析结果类型
 export interface InputAnalysisResult {
+  isProductIdea: boolean;  // 是否是产品需求描述
   isClear: boolean;
   confidence: number;
   clarifyingQuestions: ClarificationQuestion[];
+  suggestion?: string;  // 当不是产品需求时的友好提示
 }

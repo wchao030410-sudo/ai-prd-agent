@@ -60,18 +60,15 @@ export function ThinkingIndicator({ onComplete }: ThinkingIndicatorProps) {
         const elapsed = Date.now() - startTime;
         const stageProgress = Math.min((elapsed / currentStage.duration) * 100, 100);
 
-        // 计算总体进度
         const totalProgress = ((currentStageIndex + stageProgress / 100) / stages.length) * 100;
         setProgress(totalProgress);
 
         if (stageProgress < 100) {
           animationFrame = requestAnimationFrame(updateProgress);
         } else {
-          // 移动到下一个阶段
           if (currentStageIndex < stages.length - 1) {
             setCurrentStageIndex(currentStageIndex + 1);
           } else {
-            // 所有阶段完成
             onComplete?.();
           }
         }
@@ -93,58 +90,46 @@ export function ThinkingIndicator({ onComplete }: ThinkingIndicatorProps) {
   const Icon = currentStage.icon;
 
   return (
-    <div className="w-full space-y-6">
-      {/* 总体进度条 */}
-      <div className="space-y-2">
+    <div className="w-full max-w-xl mx-auto space-y-8 animate-fade-editorial editorial-paper border border-[#E0E3E8] dark:border-[#2D3748] rounded-sm p-8 md:p-12">
+      {/* 总体进度条 - 极简细线 */}
+      <div className="space-y-3">
         <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">AI 思考进度</span>
-          <span className="text-muted-foreground">{Math.round(progress)}%</span>
+          <span className="font-sans text-[#6B7B8C] dark:text-[#9AA5B1]">AI 思考进度</span>
+          <span className="font-sans text-[#1A1A1A] dark:text-[#F1F3F6]">{Math.round(progress)}%</span>
         </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+        <div className="h-px w-full bg-[#E0E3E8] dark:bg-[#2D3748] overflow-hidden">
           <div
-            className="h-full bg-primary transition-all duration-300 ease-out"
+            className="h-full bg-[#1A1A1A] dark:bg-[#F1F3F6] transition-all duration-500 ease-out"
             style={{ width: `${progress}%` }}
           />
         </div>
       </div>
 
-      {/* 当前阶段卡片 */}
-      <div className="relative overflow-hidden rounded-lg border border-border bg-card p-6">
-        {/* 动画背景 */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
-
-        <div className="relative flex items-start gap-4">
-          {/* 图标 */}
-          <div className="flex-shrink-0">
-            <div className="rounded-full bg-primary/10 p-3">
-              <Icon
-                className={`h-6 w-6 text-primary ${
-                  currentStage.id === 'connecting' || currentStage.id === 'finalizing'
-                    ? 'animate-spin'
-                    : ''
-                }`}
-              />
-            </div>
-          </div>
-
-          {/* 内容 */}
-          <div className="flex-1 space-y-1">
-            <h3 className="text-lg font-semibold">{currentStage.title}</h3>
-            <p className="text-sm text-muted-foreground">{currentStage.description}</p>
-          </div>
-
-          {/* 脉冲动画 */}
-          <div className="flex-shrink-0">
-            <div className="relative flex h-3 w-3">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-              <span className="relative inline-flex h-3 w-3 rounded-full bg-primary" />
-            </div>
+      {/* 当前阶段 - 居中排版 */}
+      <div className="text-center py-8">
+        <div className="flex justify-center mb-6">
+          <div className="p-3 border border-[#E0E3E8] dark:border-[#2D3748]">
+            <Icon
+              className={`h-6 w-6 text-[#1A1A1A] dark:text-[#F1F3F6] ${
+                currentStage.id === 'connecting' || currentStage.id === 'finalizing'
+                  ? 'animate-spin'
+                  : ''
+              }`}
+            />
           </div>
         </div>
+
+        <h3 className="font-serif text-2xl md:text-3xl text-[#1A1A1A] dark:text-[#F1F3F6] leading-snug mb-4">
+          {currentStage.title}
+        </h3>
+
+        <p className="font-sans text-sm text-[#6B7B8C] dark:text-[#9AA5B1]">
+          {currentStage.description}
+        </p>
       </div>
 
-      {/* 所有阶段列表 */}
-      <div className="space-y-2">
+      {/* 阶段列表 - 极简排版 */}
+      <div className="space-y-4 pt-8 border-t border-[#E0E3E8] dark:border-[#2D3748]">
         {stages.map((stage, index) => {
           const StageIcon = stage.icon;
           const isCompleted = index < currentStageIndex;
@@ -154,23 +139,27 @@ export function ThinkingIndicator({ onComplete }: ThinkingIndicatorProps) {
           return (
             <div
               key={stage.id}
-              className={`flex items-center gap-3 rounded-lg p-3 transition-all ${
-                isCurrent ? 'bg-accent' : 'opacity-50'
+              className={`flex items-center justify-between transition-colors duration-300 ${
+                isCurrent ? '' : 'opacity-40'
               }`}
             >
-              <div
-                className={`rounded-full p-1.5 ${
-                  isCompleted ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                }`}
-              >
-                <StageIcon className="h-3 w-3" />
+              <div className="flex items-center gap-3">
+                <StageIcon
+                  className={`h-4 w-4 ${
+                    isCurrent ? 'text-[#1A1A1A] dark:text-[#F1F3F6]' : 'text-[#9AA5B1]'
+                  }`}
+                />
+                <span
+                  className={`font-sans text-sm ${
+                    isCurrent ? 'text-[#1A1A1A] dark:text-[#F1F3F6] font-medium' : 'text-[#9AA5B1]'
+                  }`}
+                >
+                  {stage.title}
+                </span>
               </div>
-              <div className="flex-1 text-sm">
-                <div className="font-medium">{stage.title}</div>
-              </div>
-              {isCompleted && <CheckCircle className="h-4 w-4 text-primary" />}
+              {isCompleted && <CheckCircle className="h-4 w-4 text-[#1A1A1A] dark:text-[#F1F3F6]" />}
               {isCurrent && (
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <Loader2 className="h-4 w-4 animate-spin text-[#1A1A1A] dark:text-[#F1F3F6]" />
               )}
             </div>
           );
@@ -178,9 +167,9 @@ export function ThinkingIndicator({ onComplete }: ThinkingIndicatorProps) {
       </div>
 
       {/* 提示文字 */}
-      <div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
-        <p className="text-sm text-muted-foreground">
-          💡 PRD 生成通常需要 20-30 秒，请稍作等待...
+      <div className="pt-8 border-t border-[#E0E3E8] dark:border-[#2D3748] text-center">
+        <p className="font-sans text-sm text-[#6B7B8C] dark:text-[#9AA5B1]">
+          PRD 生成通常需要 20-30 秒，请稍作等待...
         </p>
       </div>
     </div>

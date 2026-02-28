@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, FileText, File } from 'lucide-react';
+import { Download, FileText } from 'lucide-react';
 
 interface ExportButtonProps {
   sessionId: string;
@@ -19,7 +19,6 @@ export function ExportButton({ sessionId, prdTitle, hasFinalContent }: ExportBut
   const [success, setSuccess] = useState('');
 
   const handleExport = async (format: 'md' | 'pdf' | 'docx') => {
-    // 检查是否有最终内容
     if (!hasFinalContent) {
       setError('请先点击"生成完整 PRD"按钮生成最终版本');
       return;
@@ -35,7 +34,6 @@ export function ExportButton({ sessionId, prdTitle, hasFinalContent }: ExportBut
       );
 
       if (format === 'md') {
-        // Markdown 格式 - 直接下载
         if (response.ok) {
           const content = await response.text();
           const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
@@ -53,7 +51,6 @@ export function ExportButton({ sessionId, prdTitle, hasFinalContent }: ExportBut
           setError(result.error || '导出失败');
         }
       } else {
-        // PDF 和 Word 格式 - 二进制文件下载
         if (response.ok) {
           const blob = await response.blob();
           const url = URL.createObjectURL(blob);
@@ -78,60 +75,73 @@ export function ExportButton({ sessionId, prdTitle, hasFinalContent }: ExportBut
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {!hasFinalContent && (
-        <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-600 dark:text-amber-400">
-          请先点击上方"生成完整 PRD"按钮，完成后再导出文档
+        <div className="px-4 py-3 border-l-2 border-[#F59E0B] bg-amber-50 dark:bg-amber-950/10">
+          <p className="font-sans text-sm text-[#B45309] dark:text-amber-400">
+            请先点击上方"生成完整 PRD"按钮，完成后再导出文档
+          </p>
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        <Button
+      {/* 导出选项 - 极简列表风格 */}
+      <div className="space-y-3">
+        <button
           onClick={() => handleExport('md')}
           disabled={!hasFinalContent || (loading.loading && loading.format === 'md')}
-          variant="outline"
-          className="gap-2"
+          className="flex items-center justify-between w-full px-0 py-4 border-b border-[#E0E3E8] dark:border-[#2D3748] font-sans text-base text-[#3A3A3A] dark:text-[#A0AEC0] hover:text-[#1A1A1A] dark:hover:text-[#F1F3F6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading.loading && loading.format === 'md' ? (
-            <>导出中...</>
-          ) : (
-            <>
-              <FileText className="h-4 w-4" />
-              导出 MD
-            </>
-          )}
-        </Button>
+          <div className="flex items-center gap-3">
+            <FileText className="h-4 w-4 text-[#6B7B8C] dark:text-[#9AA5B1]" />
+            <span className="tracking-wide">Markdown</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="font-sans text-xs text-[#9AA5B1] uppercase tracking-widest">
+              .md
+            </span>
+            {loading.loading && loading.format === 'md' && (
+              <span className="text-sm text-[#6B7B8C]">导出中...</span>
+            )}
+          </div>
+        </button>
 
-        <Button
+        <button
           onClick={() => handleExport('docx')}
           disabled={!hasFinalContent || (loading.loading && loading.format === 'docx')}
-          variant="outline"
-          className="gap-2"
+          className="flex items-center justify-between w-full px-0 py-4 border-b border-[#E0E3E8] dark:border-[#2D3748] font-sans text-base text-[#3A3A3A] dark:text-[#A0AEC0] hover:text-[#1A1A1A] dark:hover:text-[#F1F3F6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading.loading && loading.format === 'docx' ? (
-            <>导出中...</>
-          ) : (
-            <>
-              <Download className="h-4 w-4" />
-              导出 Word
-            </>
-          )}
-        </Button>
+          <div className="flex items-center gap-3">
+            <Download className="h-4 w-4 text-[#6B7B8C] dark:text-[#9AA5B1]" />
+            <span className="tracking-wide">Word 文档</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="font-sans text-xs text-[#9AA5B1] uppercase tracking-widest">
+              .docx
+            </span>
+            {loading.loading && loading.format === 'docx' && (
+              <span className="text-sm text-[#6B7B8C]">导出中...</span>
+            )}
+          </div>
+        </button>
       </div>
 
       {success && (
-        <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-3 text-sm text-green-600 dark:text-green-400">
-          {success}
+        <div className="px-4 py-3 border-l-2 border-[#10B981] bg-green-50 dark:bg-green-950/10">
+          <p className="font-sans text-sm text-[#059669] dark:text-green-400">
+            {success}
+          </p>
         </div>
       )}
 
       {error && (
-        <div className="rounded-lg border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
-          {error}
+        <div className="px-4 py-3 border-l-2 border-[#EF4444] bg-red-50 dark:bg-red-950/10">
+          <p className="font-sans text-sm text-[#DC2626] dark:text-red-400">
+            {error}
+          </p>
         </div>
       )}
 
-      <p className="text-xs text-muted-foreground">
+      <p className="font-sans text-xs text-[#9AA5B1]">
         {!hasFinalContent
           ? '提示：需要先完成最终 PRD 生成才能导出文档'
           : '推荐：Word 格式完整支持中文；Markdown 可用任何编辑器打开'}

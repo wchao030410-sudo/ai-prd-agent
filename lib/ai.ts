@@ -59,7 +59,7 @@ export async function chatCompletion(
       messages: options.messages,
       temperature: options.temperature ?? 0.7,
       top_p: options.topP ?? 0.9,
-      max_tokens: options.maxTokens ?? 4096,
+      max_tokens: options.maxTokens ?? 8192,
       ...(options.responseFormat === 'json_object' && {
         response_format: { type: 'json_object' },
       }),

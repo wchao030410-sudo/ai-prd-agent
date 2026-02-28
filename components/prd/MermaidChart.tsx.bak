@@ -1,9 +1,9 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Loader2, Maximize2, Minimize2, Copy, Check, Edit3 } from 'lucide-react';
+import { AlertCircle, Loader2, Maximize2, Minimize2, Copy, Check, Code, Edit3 } from 'lucide-react';
 import mermaid from 'mermaid';
 
 interface MermaidChartProps {
@@ -17,70 +17,29 @@ interface MermaidChartProps {
   onDiagramUpdated?: (newCode: string) => void;
 }
 
-// 根据图表类型获取配色配置
-const getThemeConfig = (diagramType?: 'architecture' | 'journey' | 'features' | 'dataflow') => {
-  const baseConfig = {
+// 初始化 Mermaid（只执行一次）
+if (typeof window !== 'undefined') {
+  mermaid.initialize({
     startOnLoad: false,
-    theme: 'base' as const,
-    securityLevel: 'loose' as const,
-  };
-
-  const themeConfigs = {
-    architecture: {
+    theme: 'base',
+    securityLevel: 'loose',
+    themeVariables: {
+      fontFamily: 'Lato, -apple-system, sans-serif',
       primaryColor: '#E8F0F8',
       primaryBorderColor: '#4A5A7A',
       primaryTextColor: '#1A1A1A',
       secondaryColor: '#F0E8F8',
       secondaryBorderColor: '#6B4A7A',
-      tertiaryColor: '#E8F8F0',
-      tertiaryBorderColor: '#4A7A5A',
-      lineColor: '#4A5A7A',
-    },
-    journey: {
-      primaryColor: '#FFF4E6',
-      primaryBorderColor: '#C9864E',
-      primaryTextColor: '#1A1A1A',
-      secondaryColor: '#E6F4FF',
-      secondaryBorderColor: '#4A86C9',
-      tertiaryColor: '#F0E6FF',
-      tertiaryBorderColor: '#7A5AC9',
-      lineColor: '#C9864E',
-    },
-    features: {
-      primaryColor: '#E6FFE6',
-      primaryBorderColor: '#4AC94A',
-      primaryTextColor: '#1A1A1A',
-      secondaryColor: '#FFF4E6',
-      secondaryBorderColor: '#C9864E',
-      tertiaryColor: '#E6F4FF',
-      tertiaryBorderColor: '#4A86C9',
-      lineColor: '#4AC94A',
-    },
-    dataflow: {
-      primaryColor: '#E6F4FF',
-      primaryBorderColor: '#4A86C9',
-      primaryTextColor: '#1A1A1A',
-      secondaryColor: '#FFE6E6',
-      secondaryBorderColor: '#C94A4A',
-      tertiaryColor: '#E6FFE6',
-      tertiaryBorderColor: '#4AC94A',
-      lineColor: '#4A86C9',
-    },
-  };
-
-  const config = diagramType ? themeConfigs[diagramType] : themeConfigs.architecture;
-
-  return {
-    ...baseConfig,
-    themeVariables: {
-      fontFamily: 'Lato, -apple-system, sans-serif',
-      ...config,
+      secondaryTextColor: '#1A1A1A',
+      tertiaryColor: '#F8F0E8',
+      tertiaryBorderColor: '#7A5A4A',
+      tertiaryTextColor: '#1A1A1A',
       noteBkgColor: '#FFF9E6',
       noteTextColor: '#1A1A1A',
       noteBorderColor: '#E0E3E8',
     },
-  };
-};
+  });
+}
 
 export function MermaidChart({
   code,
@@ -104,6 +63,80 @@ export function MermaidChart({
 
   const error = externalError || internalError;
 
+  // 根据图表类型获取配色配置
+  const getThemeConfig = () => {
+    const baseConfig = {
+      startOnLoad: false,
+      theme: 'base' as const,
+      securityLevel: 'loose',
+    };
+
+    // 不同图表类型的配色方案
+    const themeConfigs = {
+      architecture: {
+        primaryColor: '#E8F0F8',
+        primaryBorderColor: '#4A5A7A',
+        primaryTextColor: '#1A1A1A',
+        secondaryColor: '#F0E8F8',
+        secondaryBorderColor: '#6B4A7A',
+        secondaryTextColor: '#1A1A1A',
+        tertiaryColor: '#E8F8F0',
+        tertiaryBorderColor: '#4A7A5A',
+        tertiaryTextColor: '#1A1A1A',
+        lineColor: '#4A5A7A',
+      },
+      journey: {
+        primaryColor: '#FFF4E6',
+        primaryBorderColor: '#C9864E',
+        primaryTextColor: '#1A1A1A',
+        secondaryColor: '#E6F4FF',
+        secondaryBorderColor: '#4A86C9',
+        secondaryTextColor: '#1A1A1A',
+        tertiaryColor: '#F0E6FF',
+        tertiaryBorderColor: '#7A5AC9',
+        tertiaryTextColor: '#1A1A1A',
+        lineColor: '#C9864E',
+      },
+      features: {
+        primaryColor: '#E6FFE6',
+        primaryBorderColor: '#4AC94A',
+        primaryTextColor: '#1A1A1A',
+        secondaryColor: '#FFF4E6',
+        secondaryBorderColor: '#C9864E',
+        secondaryTextColor: '#1A1A1A',
+        tertiaryColor: '#E6F4FF',
+        tertiaryBorderColor: '#4A86C9',
+        tertiaryTextColor: '#1A1A1A',
+        lineColor: '#4AC94A',
+      },
+      dataflow: {
+        primaryColor: '#E6F4FF',
+        primaryBorderColor: '#4A86C9',
+        primaryTextColor: '#1A1A1A',
+        secondaryColor: '#FFE6E6',
+        secondaryBorderColor: '#C94A4A',
+        secondaryTextColor: '#1A1A1A',
+        tertiaryColor: '#E6FFE6',
+        tertiaryBorderColor: '#4AC94A',
+        tertiaryTextColor: '#1A1A1A',
+        lineColor: '#4A86C9',
+      },
+    };
+
+    const config = diagramType ? themeConfigs[diagramType] : themeConfigs.architecture;
+
+    return {
+      ...baseConfig,
+      themeVariables: {
+        fontFamily: 'Lato, -apple-system, sans-serif',
+        ...config,
+        noteBkgColor: '#FFF9E6',
+        noteTextColor: '#1A1A1A',
+        noteBorderColor: '#E0E3E8',
+      },
+    };
+  };
+
   // 渲染图表的函数
   const renderChart = useCallback(async () => {
     if (!code) return;
@@ -112,50 +145,33 @@ export function MermaidChart({
     setInternalError(null);
 
     try {
+      // 生成唯一 ID
       const id = `mermaid-${Math.random().toString(36).substring(7)}`;
-      const config = getThemeConfig(diagramType);
-      mermaid.initialize(config);
 
-      // 预处理代码：清理和格式化
+      // 预处理代码：移除可能导致问题的HTML标签，但保留换行符
       let processedCode = code
-        // 替换 HTML 换行标签为实际换行
         .replace(/<br\s*\/?>/gi, '\n')
-        // 移除可能的 HTML 标签
-        .replace(/<[a-zA-Z][^>]*>/g, ' ')
-        // 移除 &lt; &gt; 等实体
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&amp;/g, '&')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        // 替换多个空格为单个空格
-        .replace(/  +/g, ' ')
-        // 在节点定义后添加换行（防止连在一起）
-        .replace(/(\[[^\]]*\])([a-zA-Z])/g, '$1\n$2')
-        // 在箭头后添加换行
-        .replace(/(-->|---|->|-<|--)([a-zA-Z])/g, '$1\n$2')
-        // 清理每行的首尾空格并移除空行
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0)
-        .join('\n');
+        .replace(/<[^>]*>/g, '')
+        .replace(/[ \t]+/g, ' '); // 只替换空格和制表符，不替换换行符
 
+      // 使用 mermaid.render 渲染图表
       const { svg } = await mermaid.render(id, processedCode);
       setSvgContent(svg);
       setIsRendering(false);
     } catch (err) {
+      // 提供更友好的错误信息
       let errorMessage = '图表渲染失败';
       if (err instanceof Error) {
         if (err.message.includes('Parse error')) {
           errorMessage = '图表语法解析错误，AI 生成的图表代码格式不正确。请尝试重新生成图表。';
         } else {
-          errorMessage = `图表渲染失败：${err.message.substring(0, 100)}`;
+          errorMessage = `图表渲染失败: ${err.message.substring(0, 100)}`;
         }
       }
       setInternalError(errorMessage);
       setIsRendering(false);
     }
-  }, [code, diagramType]);
+  }, [code]);
 
   useEffect(() => {
     if (code) {
@@ -163,6 +179,7 @@ export function MermaidChart({
     }
   }, [code, renderChart]);
 
+  // 复制 Mermaid 代码
   const handleCopy = () => {
     if (code) {
       navigator.clipboard.writeText(code);
@@ -171,6 +188,7 @@ export function MermaidChart({
     }
   };
 
+  // 编辑图表
   const handleEdit = async () => {
     if (!sessionId || !diagramType || !editInstruction.trim()) return;
 
@@ -202,10 +220,12 @@ export function MermaidChart({
     }
   };
 
+  // 切换全屏
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
   };
 
+  // 加载状态
   if (isLoading) {
     return (
       <Card>
@@ -215,7 +235,7 @@ export function MermaidChart({
         </CardHeader>
         <CardContent>
           <div className="flex h-64 flex-col items-center justify-center gap-4">
-            <Loader2 className="h-12 w-12 animate-spin text-[#4A5A7A]" />
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
             <div className="text-center">
               <p className="font-semibold">AI 正在生成图表...</p>
               <p className="text-sm text-muted-foreground">这可能需要 10-20 秒</p>
@@ -226,11 +246,12 @@ export function MermaidChart({
     );
   }
 
+  // 图表内容渲染
   const renderChartContent = () => {
     if (error) {
       return (
         <div className="space-y-4">
-          <div className="flex items-start gap-2 rounded-sm border border-[#B86B6B] bg-red-50 dark:bg-red-950/10 p-4 text-[#B86B6B] dark:text-red-400">
+          <div className="flex items-start gap-2 rounded-lg border border-destructive bg-destructive/10 p-4 text-destructive">
             <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
               <span className="text-sm">{error}</span>
@@ -247,14 +268,14 @@ export function MermaidChart({
             </div>
           </div>
           {showSource && code && (
-            <div className="rounded-sm border border-[#E0E3E8] dark:border-[#2D3748] bg-[#F5F3F0] dark:bg-[#1E2532] p-4">
+            <div className="rounded-lg bg-muted p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-[#6B7B8C] dark:text-[#9AA5B1]">Mermaid 源代码</span>
+                <span className="text-sm font-medium text-muted-foreground">Mermaid 源代码</span>
                 <Button variant="ghost" size="sm" onClick={handleCopy}>
                   {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
-              <pre className="text-xs overflow-x-auto whitespace-pre-wrap break-all font-mono">
+              <pre className="text-xs overflow-x-auto whitespace-pre-wrap break-all">
                 {code}
               </pre>
             </div>
@@ -273,24 +294,25 @@ export function MermaidChart({
     }
 
     return (
-      <div className="py-4">
+      <div className="py-8">
         <div
-          className="mermaid-content flex items-start justify-center"
-          style={{ minHeight: '100px' }}
+          className="flex items-center justify-center"
+          style={{ minHeight: '200px' }}
           dangerouslySetInnerHTML={{ __html: svgContent }}
         />
       </div>
     );
   };
 
+  // 全屏模式
   if (isFullscreen) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-8">
-        <div className="relative h-full w-full max-w-7xl overflow-auto rounded-sm bg-white dark:bg-[#0A0F1C] p-8">
+        <div className="relative h-full w-full max-w-7xl overflow-auto rounded-lg bg-white dark:bg-slate-950 p-8">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-serif font-bold text-[#1A1A1A] dark:text-[#F1F3F6]">{title}</h2>
-              {description && <p className="text-sm text-[#6B7B8C] dark:text-[#9AA5B1]">{description}</p>}
+              <h2 className="text-2xl font-bold">{title}</h2>
+              {description && <p className="text-sm text-muted-foreground">{description}</p>}
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={handleCopy}>
@@ -333,7 +355,7 @@ export function MermaidChart({
                   <Edit3 className="h-4 w-4" />
                 </Button>
               ) : (
-                <Button variant="ghost" size="sm" disabled title="编辑功能需要会话 ID">
+                <Button variant="ghost" size="sm" disabled title="编辑功能需要会话ID">
                   <Edit3 className="h-4 w-4 opacity-30" />
                 </Button>
               )}
@@ -352,14 +374,15 @@ export function MermaidChart({
         </div>
       </CardHeader>
       <CardContent>
+        {/* 编辑面板 */}
         {isEditing && (
-          <div className="mb-4 rounded-sm border border-[#E0E3E8] dark:border-[#2D3748] bg-[#F5F3F0] dark:bg-[#1E2532] p-4">
-            <label className="mb-2 block text-sm font-medium text-[#1A1A1A] dark:text-[#F1F3F6]">编辑图表</label>
+          <div className="mb-4 rounded-lg border bg-muted p-4">
+            <label className="mb-2 block text-sm font-medium">编辑图表</label>
             <textarea
               value={editInstruction}
               onChange={(e) => setEditInstruction(e.target.value)}
               placeholder="输入编辑指令，例如：添加用户认证步骤、修改数据流向等..."
-              className="mb-2 w-full rounded-sm border border-[#E0E3E8] dark:border-[#2D3748] bg-transparent px-3 py-2 text-sm font-sans"
+              className="mb-2 w-full rounded-md border bg-background px-3 py-2 text-sm"
               rows={3}
             />
             <div className="flex gap-2">

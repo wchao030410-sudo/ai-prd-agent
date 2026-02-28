@@ -50,13 +50,13 @@ export function PRDViewer({ prd }: PRDViewerProps) {
   return (
     <div className="space-y-6">
       {/* 标题和描述 */}
-      <Card>
+      <Card className="card-editorial">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-2xl">
-            <FileText className="h-6 w-6 text-primary" />
+          <CardTitle className="flex items-center gap-2 text-2xl font-serif">
+            <FileText className="h-6 w-6 text-[#4A5A7A]" />
             {prd.title}
           </CardTitle>
-          <CardDescription className="text-base">
+          <CardDescription className="text-base font-sans">
             {prd.description}
           </CardDescription>
         </CardHeader>
@@ -64,12 +64,12 @@ export function PRDViewer({ prd }: PRDViewerProps) {
 
       {/* 背景 */}
       {prd.background && (
-        <Card>
+        <Card className="card-editorial">
           <CardHeader>
-            <CardTitle>产品背景</CardTitle>
+            <CardTitle className="font-serif">产品背景</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground whitespace-pre-line">
+            <p className="text-[#6B7B8C] dark:text-[#9AA5B1] whitespace-pre-line font-sans">
               {prd.background}
             </p>
           </CardContent>

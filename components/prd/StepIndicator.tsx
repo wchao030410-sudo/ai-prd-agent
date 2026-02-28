@@ -1,7 +1,6 @@
 'use client';
 
 import { Check } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface StepIndicatorProps {
   current: number;
@@ -11,48 +10,53 @@ interface StepIndicatorProps {
 
 export function StepIndicator({ current, total, steps }: StepIndicatorProps) {
   return (
-    <div className="flex items-center justify-center gap-2 py-4">
-      {steps.map((step, index) => {
-        const stepNumber = index + 1;
+    <div className="flex items-center justify-center gap-8 md:gap-16 py-12">
+      {steps.map((step, i) => {
+        const stepNumber = i + 1;
         const isCompleted = stepNumber < current;
         const isCurrent = stepNumber === current;
         const isUpcoming = stepNumber > current;
 
         return (
-          <div key={index} className="flex items-center">
-            {/* 步骤圆圈 */}
+          <div key={i} className="flex items-center">
+            {/* 步骤文字 */}
             <div className="flex flex-col items-center">
-              <div
-                className={cn(
-                  'flex h-10 w-10 items-center justify-center rounded-full border-2 font-semibold transition-all',
-                  isCompleted && 'border-primary bg-primary text-primary-foreground',
-                  isCurrent && 'border-primary text-primary',
-                  isUpcoming && 'border-muted-foreground/30 text-muted-foreground'
-                )}
-              >
-                {isCompleted ? (
-                  <Check className="h-5 w-5" />
-                ) : (
-                  <span>{stepNumber}</span>
-                )}
-              </div>
               <span
-                className={cn(
-                  'mt-2 text-xs font-medium',
-                  isCurrent ? 'text-primary' : 'text-muted-foreground'
-                )}
+                className={`font-sans text-sm uppercase tracking-widest transition-colors duration-300 ${
+                  isCompleted
+                    ? 'text-[#9AA5B1]'
+                    : isCurrent
+                    ? 'text-[#1A1A1A] dark:text-[#F1F3F6] font-medium'
+                    : 'text-[#C1C9D3] dark:text-[#2D3748]'
+                }`}
               >
                 {step}
               </span>
+
+              {/* 当前步骤指示器 - 细线 */}
+              {isCurrent && (
+                <div className="w-8 h-px bg-[#1A1A1A] dark:bg-[#F1F3F6] mt-4" />
+              )}
+
+              {/* 完成步骤 - 对勾 */}
+              {isCompleted && (
+                <div className="mt-4 flex items-center justify-center w-6 h-6 rounded-sm border border-[#9AA5B1]">
+                  <Check className="h-3 w-3 text-[#9AA5B1]" />
+                </div>
+              )}
+
+              {/* 待办步骤 - 空心圆 */}
+              {isUpcoming && (
+                <div className="mt-4 w-6 h-6 rounded-sm border border-[#E0E3E8] dark:border-[#2D3748]" />
+              )}
             </div>
 
             {/* 连接线（除了最后一个步骤） */}
-            {index < steps.length - 1 && (
+            {i < steps.length - 1 && (
               <div
-                className={cn(
-                  'mx-2 h-0.5 w-16 transition-all',
-                  stepNumber < current ? 'bg-primary' : 'bg-muted-foreground/30'
-                )}
+                className={`mx-6 h-px w-12 md:w-20 transition-colors duration-500 ${
+                  isCompleted ? 'bg-[#9AA5B1]' : 'bg-[#E0E3E8] dark:bg-[#2D3748]'
+                }`}
               />
             )}
           </div>

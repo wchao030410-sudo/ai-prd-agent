@@ -16,8 +16,12 @@ export async function POST(request: NextRequest) {
     // 验证请求
     const result = AnalyzeInputSchema.safeParse(body);
     if (!result.success) {
+      // 提取更友好的错误信息 (Zod 使用 issues 而不是 errors)
+      const firstIssue = result.error.issues?.[0];
+      const friendlyMessage = firstIssue?.message || '产品想法描述太短啦，请至少输入10个字符';
+
       return NextResponse.json(
-        { error: '请求参数错误', details: result.error },
+        { error: friendlyMessage },
         { status: 400 }
       );
     }
@@ -52,6 +56,17 @@ export async function POST(request: NextRequest) {
         ...q,
         id: q.id || `q_${Date.now()}_${index}`,
       }));
+    }
+
+    // 检查是否是产品需求
+    if (analysisResult.isProductIdea === false) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: analysisResult.suggestion || '这看起来不像是一个产品需求描述。请告诉我你想做一个什么样的产品？比如：我想做一个外卖配送应用程序',
+        },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json({

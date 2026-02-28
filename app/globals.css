@@ -4,48 +4,68 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    /* Editorial 杂志风格配色 - 深墨色 + 纸白色 */
+    --background: 45 20% 98%;      /* #FAF9F7 暖白纸色 */
+    --foreground: 20 15% 12%;      /* #1A1A1A 深墨色 */
+
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card-foreground: 20 15% 12%;
+
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
+    --popover-foreground: 20 15% 12%;
+
+    /* 主色调 - 深钴蓝 */
+    --primary: 220 40% 45%;        /* #4A5A7A */
     --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
+
+    --secondary: 220 15% 95%;      /* #E3E7EF 淡蓝灰 */
+    --secondary-foreground: 20 15% 12%;
+
+    --muted: 220 15% 95%;
+    --muted-foreground: 215 15% 45%;  /* #6B7B8C */
+
+    --accent: 220 40% 45%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 10 50% 50%;     /* #B86B6B 砖红 */
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --radius: 0.5rem;
+
+    --border: 220 10% 88%;         /* #E0E3E8 极淡灰线 */
+    --input: 220 10% 88%;
+    --ring: 220 40% 45%;
+
+    --radius: 0.25rem;             /* 减小圆角，更精致 */
   }
 
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
+    /* 深色模式 - 保持杂志风格 */
+    --background: 220 15% 12%;     /* #1A1D23 深色纸 */
+    --foreground: 220 10% 95%;     /* #F1F3F6 */
+
+    --card: 220 15% 14%;
+    --card-foreground: 220 10% 95%;
+
+    --popover: 220 15% 14%;
+    --popover-foreground: 220 10% 95%;
+
+    --primary: 220 35% 60%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 220 15% 20%;
+    --secondary-foreground: 220 10% 95%;
+
+    --muted: 220 15% 20%;
+    --muted-foreground: 220 10% 60%;
+
+    --accent: 220 35% 60%;
     --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+
+    --destructive: 10 40% 50%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+
+    --border: 220 15% 20%;
+    --input: 220 15% 20%;
+    --ring: 220 35% 60%;
   }
 }
 
@@ -53,7 +73,266 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* 衬线字体工具类 */
+  .font-serif {
+    font-family: var(--font-serif), Georgia, "Times New Roman", serif;
+  }
+
+  /* 优雅动画 */
+  @keyframes fade-in-editorial {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-up-editorial {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-editorial {
+    animation: fade-in-editorial 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .animate-slide-up-editorial {
+    animation: slide-up-editorial 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* 加载进度动画 */
+  @keyframes loading-progress {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(200%);
+    }
+  }
+
+  /* 极简分隔线 */
+  .editorial-divider {
+    @apply h-px bg-[#E0E3E8] dark:bg-[#2D3748];
+  }
+
+  /* 装饰点 */
+  .editorial-dot {
+    @apply w-1 h-1 bg-[#1A1A1A] dark:bg-[#E2E8F0];
+  }
+
+  /* 纸质背景 */
+  .editorial-paper {
+    @apply bg-[#FAF9F7] dark:bg-[#1A1D23];
+  }
+
+  /* 深墨色文字 */
+  .editorial-ink {
+    @apply text-[#1A1A1A] dark:text-[#F1F3F6];
+  }
+
+  /* 极简滚动条 */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-[#9AA5B1] rounded;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-[#6B7B8C];
+  }
+
+  /* 文本选择 */
+  ::selection {
+    @apply bg-[#4A5A7A]/20 text-[#1A1A1A];
+  }
+
+  .dark ::selection {
+    @apply bg-[#4A5A7A]/30 text-[#F1F3F6];
+  }
+
+  /* 平滑滚动 */
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  /* 杂志风格卡片 */
+  .card-editorial {
+    @apply bg-white dark:bg-[#1E2532];
+    @apply border border-[#E0E3E8] dark:border-[#2D3748];
+    @apply rounded-sm;
+    transition: border-color 0.3s ease;
+  }
+
+  .card-editorial:hover {
+    @apply border-[#9AA5B1] dark:border-[#4A5568];
+  }
+
+  /* 极简按钮 */
+  .btn-editorial {
+    @apply font-sans text-sm tracking-wide;
+    @apply px-6 py-2.5;
+    @apply transition-all duration-300;
+  }
+
+  .btn-editorial-primary {
+    @apply bg-[#1A1A1A] text-white;
+    @apply hover:bg-[#3A3A3A];
+  }
+
+  .btn-editorial-secondary {
+    @apply bg-transparent text-[#1A1A1A];
+    @apply border border-[#E0E3E8];
+    @apply hover:border-[#1A1A1A];
+  }
+
+  /* 极简输入框 */
+  .input-editorial {
+    @apply bg-transparent border border-[#E0E3E8];
+    @apply focus:border-[#1A1A1A] focus:outline-none;
+    @apply rounded-sm;
+    @apply px-4 py-2.5;
+    @apply font-sans text-sm;
+  }
+
+  /* 章节标题装饰 */
+  .section-header {
+    @apply relative pb-4 mb-8;
+    @apply after:content-[''] after:absolute after:bottom-0 after:left-0;
+    @apply after:w-16 after:h-px after:bg-[#1A1A1A]/20;
+  }
+
+  /* 引用块 - 杂志风格 */
+  .blockquote-editorial {
+    @apply border-l-2 border-[#4A5A7A];
+    @apply pl-6 my-10;
+    @apply font-serif text-xl italic;
+    @apply text-[#3A3A3A] dark:text-[#A0AEC0];
+  }
+}
+
+@layer utilities {
+  /* 字间距 */
+  .tracking-super-wide {
+    letter-spacing: 0.15em;
+  }
+
+  /* 柔和阴影 */
+  .shadow-soft {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  }
+
+  /* 大留白 */
+  .pad-section {
+    @apply py-16 md:py-24;
+  }
+
+  .pad-block {
+    @apply my-12 md:my-16;
+  }
+
+  /* 杂志风格背景纹理 */
+  .bg-paper-texture {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231a1a1a' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  /* 渐变文字 */
+  .text-gradient-editorial {
+    @apply bg-gradient-to-br from-[#1A1A1A] via-[#3A3A3A] to-[#5A5A5A] dark:from-[#F1F3F6] dark:via-[#E2E8F0] dark:to-[#A0AEC0];
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* 优雅悬浮效果 */
+  .hover-lift-editorial {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .hover-lift-editorial:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  }
+
+  /* 装饰性边框角 */
+  .corner-border {
+    position: relative;
+  }
+
+  .corner-border::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 24px;
+    height: 24px;
+    border-top: 1px solid currentColor;
+    border-left: 1px solid currentColor;
+  }
+
+  .corner-border::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 24px;
+    height: 24px;
+    border-bottom: 1px solid currentColor;
+    border-right: 1px solid currentColor;
+  }
+
+  /* 平滑淡入 */
+  @keyframes fade-in-slow {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-slow {
+    animation: fade-in-slow 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* 文本框聚焦样式 - 移除默认边框 */
+  .textarea-no-border {
+    @apply border-0 shadow-none focus:ring-0 bg-transparent;
+  }
+
+  /* 大标题样式 */
+  .text-title-editorial {
+    @apply text-4xl md:text-5xl font-serif leading-tight text-[#1A1A1A] dark:text-[#F1F3F6];
+  }
+
+  /* 副标题样式 */
+  .text-subtitle-editorial {
+    @apply text-lg text-[#6B7B8C] dark:text-[#9AA5B1] font-sans;
   }
 }

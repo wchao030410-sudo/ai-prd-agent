@@ -31,8 +31,12 @@ export async function POST(request: NextRequest) {
     // 验证请求
     const result = GeneratePRDSchema.safeParse(body);
     if (!result.success) {
+      // 提取更友好的错误信息 (Zod 使用 issues 而不是 errors)
+      const firstIssue = result.error.issues?.[0];
+      const friendlyMessage = firstIssue?.message || '产品想法描述太短啦，请至少输入10个字符';
+
       return NextResponse.json(
-        { error: '请求参数错误', details: result.error },
+        { error: friendlyMessage },
         { status: 400 }
       );
     }

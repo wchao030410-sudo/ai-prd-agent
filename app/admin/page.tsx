@@ -94,8 +94,8 @@ export default function AdminOverviewPage() {
   const yesterday = history.length > 1 ? history[history.length - 2] : null
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-6">Today&apos;s Overview</h2>
+    <div className="editorial-paper min-h-screen p-6">
+      <h2 className="text-2xl font-bold mb-6 font-serif text-[#1A1A1A] dark:text-[#F1F3F6]">今日概览</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
