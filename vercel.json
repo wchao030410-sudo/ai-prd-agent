@@ -2,5 +2,11 @@
   "buildCommand": "prisma generate && next build",
   "devCommand": "next dev",
   "installCommand": "npm install",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "env": {
+    "ZHIPU_API_KEY": "@zhipu-api-key",
+    "DATABASE_URL": "@database-url",
+    "ADMIN_PASSWORD_HASH": "@admin-password-hash",
+    "ADMIN_JWT_SECRET": "@admin-jwt-secret"
+  }
 }
