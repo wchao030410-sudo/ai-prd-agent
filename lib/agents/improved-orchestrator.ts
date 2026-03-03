@@ -108,6 +108,7 @@ export class ImprovedMultiAgentOrchestrator {
           status: 'idle',
           progress: 0,
           message: agent.message,
+          logs: [],
         };
       }
     };
@@ -127,12 +128,28 @@ export class ImprovedMultiAgentOrchestrator {
       }
     };
 
+    // 添加日志
+    const addAgentLog = (id: string, log: string) => {
+      if (agentsState[id]) {
+        if (!agentsState[id].logs) {
+          agentsState[id].logs = [];
+        }
+        const timestamp = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        agentsState[id].logs.push(`[${timestamp}] ${log}`);
+        // 保持日志不超过 50 条
+        if (agentsState[id].logs!.length > 50) {
+          agentsState[id].logs = agentsState[id].logs!.slice(-50);
+        }
+      }
+    };
+
     try {
       // 立即发送 Agent 就绪状态
       this.sendProgress(input.onProgress, 'ready', 5, agentsState, '🚀 所有 Agent 已就绪，开始执行...');
 
       // ========== 阶段 1: 需求分析 ==========
       updateAgentState('requirement', 'running', 10);
+      addAgentLog('requirement', '开始分析产品想法：' + input.idea.slice(0, 50) + '...');
       this.sendProgress(input.onProgress, 'requirement', 15, agentsState, '🧠 需求分析 Agent 正在拆解功能需求...');
 
       const requirementResult = await this.requirementAgent.execute({
@@ -146,6 +163,8 @@ export class ImprovedMultiAgentOrchestrator {
 
       const requirementAnalysis = requirementResult.data;
       updateAgentState('requirement', 'completed', 100, '✅ 需求分析完成');
+      addAgentLog('requirement', `完成！识别到 ${requirementAnalysis?.decomposedRequirements?.functional?.length || 0} 个功能需求`);
+      addAgentLog('requirement', `发现 ${requirementAnalysis?.risks?.technical?.length || 0} 个技术风险`);
       this.sendProgress(input.onProgress, 'requirement', 25, agentsState, '✅ 需求分析完成');
 
       if (!requirementAnalysis) {
@@ -163,14 +182,18 @@ export class ImprovedMultiAgentOrchestrator {
 
       if (!competitorResult.success) {
         updateAgentState('competitor', 'completed', 100, '⚠️ 竞品分析跳过');
+        addAgentLog('competitor', '竞品分析失败，跳过此阶段');
       } else {
         const competitorAnalysis = competitorResult.data;
         updateAgentState('competitor', 'completed', 100, '✅ 竞品分析完成');
+        addAgentLog('competitor', `完成！发现 ${competitorAnalysis?.competitors?.length || 0} 个竞品`);
+        addAgentLog('competitor', `识别 ${competitorAnalysis?.marketOpportunities?.length || 0} 个市场机会`);
         this.sendProgress(input.onProgress, 'competitor', 40, agentsState, '✅ 竞品分析完成');
       }
 
       // ========== 阶段 3: PRD 撰写 ==========
       updateAgentState('writer', 'running', 10);
+      addAgentLog('writer', '开始撰写 PRD 文档，整合需求分析和竞品分析结果...');
       this.sendProgress(input.onProgress, 'writer', 50, agentsState, '📄 PRD 撰写 Agent 正在整合信息...');
 
       const writerResult = await this.writerAgent.execute({
@@ -190,6 +213,8 @@ export class ImprovedMultiAgentOrchestrator {
       }
 
       updateAgentState('writer', 'completed', 100, '✅ PRD 撰写完成');
+      addAgentLog('writer', `完成！已生成 "${prd.title}"`);
+      addAgentLog('writer', `包含 ${prd.features?.length || 0} 个功能特性`);
       this.sendProgress(input.onProgress, 'writer', 70, agentsState, '✅ PRD 撰写完成');
 
       // ========== 阶段 4: 质量审查 + 迭代优化 ==========
@@ -198,6 +223,7 @@ export class ImprovedMultiAgentOrchestrator {
       while (iterations < this.config.maxIterations) {
         iterations++;
         updateAgentState('review', 'running', 10);
+        addAgentLog('review', `开始第 ${iterations} 轮质量审查...`);
         this.sendProgress(input.onProgress, `quality_review_${iterations}`, 75, agentsState, `🔍 质量审查 (${iterations}/${this.config.maxIterations})...`);
 
         const prdContent = JSON.stringify(prd, null, 2);
@@ -213,22 +239,28 @@ export class ImprovedMultiAgentOrchestrator {
         }
 
         updateAgentState('review', 'completed', 100, '✅ 质量审查完成');
+        addAgentLog('review', `审查完成！综合评分: ${qualityReview.overallScore}/100`);
+        addAgentLog('review', `清晰度: ${qualityReview.dimensionScores?.clarity || 0}, 完整性: ${qualityReview.dimensionScores?.completeness || 0}`);
 
         // 检查是否需要迭代
         if (!qualityReview.needsIteration && qualityReview.overallScore >= this.config.qualityThreshold) {
+          addAgentLog('review', '✅ 质量达标，无需迭代优化');
           this.sendProgress(input.onProgress, 'complete', 95, agentsState, `✅ 质量审查通过！评分: ${qualityReview.overallScore}/100`);
           break;
         }
 
         if (iterations >= this.config.maxIterations) {
+          addAgentLog('review', '⚠️ 已达最大迭代次数');
           this.sendProgress(input.onProgress, 'complete', 95, agentsState, `⚠️ 已达最大迭代次数，最终评分: ${qualityReview.overallScore}/100`);
           break;
         }
 
         // 需要迭代优化
+        addAgentLog('review', `发现 ${qualityReview.issues?.length || 0} 个问题，开始优化...`);
         this.sendProgress(input.onProgress, `refine_${iterations}`, 80 + (iterations * 5), agentsState, `🔧 优化迭代 (${iterations}/${this.config.maxIterations})...`);
 
         updateAgentState('refine', 'running', 10);
+        addAgentLog('refine', `开始第 ${iterations} 轮优化...`);
 
         const refineResult = await this.refinerAgent.execute({
           currentPRD: prd,
@@ -245,6 +277,7 @@ export class ImprovedMultiAgentOrchestrator {
 
         prd = refineResult.data;
         updateAgentState('refine', 'completed', 100, '✅ 优化完成');
+        addAgentLog('refine', `优化完成，准备下一轮审查`);
       }
 
       // 构建最终结果
@@ -254,6 +287,7 @@ export class ImprovedMultiAgentOrchestrator {
         throw new Error('PRD 生成失败');
       }
 
+      addAgentLog('writer', `🎉 全部完成！总耗时 ${Math.round(totalDuration / 1000)} 秒`);
       this.sendProgress(input.onProgress, 'complete', 100, agentsState, '✨ PRD 文档生成完成！');
 
       return {

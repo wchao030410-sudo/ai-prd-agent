@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Brain, Search, FileText, CheckCircle, Loader2, Sparkles, ArrowRight, XCircle } from 'lucide-react';
 
 interface AgentState {
@@ -13,6 +13,7 @@ interface AgentState {
   endTime?: number;
   duration?: number;
   output?: string;
+  logs?: string[];
 }
 
 interface AgentFlowProgressProps {
@@ -41,6 +42,8 @@ export function AgentFlowProgress({
   onComplete
 }: AgentFlowProgressProps) {
   const [mounted, setMounted] = useState(false);
+  const [logsExpanded, setLogsExpanded] = useState(true);
+  const logsEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -51,6 +54,13 @@ export function AgentFlowProgress({
       onComplete?.();
     }
   }, [overallProgress, onComplete]);
+
+  // 自动滚动到最新日志
+  useEffect(() => {
+    if (logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [agents]);
 
   if (!mounted) {
     return null;
@@ -203,6 +213,52 @@ export function AgentFlowProgress({
         <div className="absolute top-[52px] left-[52px] right-[52px] h-0.5 bg-[#E0E3E8] dark:bg-[#2D3748] -z-10 hidden md:block" />
       </div>
 
+      {/* 实时日志显示区域 */}
+      {(() => {
+        // 收集所有 agent 的日志
+        const allLogs: string[] = [];
+        Object.values(agents).forEach(agent => {
+          if (agent.logs && agent.logs.length > 0) {
+            allLogs.push(...agent.logs);
+          }
+        });
+
+        if (allLogs.length === 0 && overallProgress < 100) {
+          return null;
+        }
+
+        return (
+          <div className="mt-4 border border-[#E0E3E8] dark:border-[#2D3748] rounded-sm overflow-hidden">
+            <div
+              className="flex items-center justify-between px-4 py-2 bg-[#F5F3F0] dark:bg-[#1E2532] cursor-pointer"
+              onClick={() => setLogsExpanded(!logsExpanded)}
+            >
+              <span className="font-sans text-xs font-medium text-[#6B7B8C] dark:text-[#9AA5B1]">
+                📋 执行日志 ({allLogs.length} 条)
+              </span>
+              <span className="text-[#9AA5B1]">
+                {logsExpanded ? '▲' : '▼'}
+              </span>
+            </div>
+            {logsExpanded && (
+              <div className="h-40 overflow-y-auto bg-[#FAF9F7] dark:bg-[#0D1117] p-3 space-y-1">
+                {allLogs.map((log, index) => (
+                  <p key={index} className="font-mono text-[10px] text-[#6B7B8C] dark:text-[#9AA5B1] leading-relaxed">
+                    {log}
+                  </p>
+                ))}
+                {allLogs.length === 0 && (
+                  <p className="font-mono text-[10px] text-[#9AA5B1] italic">
+                    等待任务执行...
+                  </p>
+                )}
+                <div ref={logsEndRef} />
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* 底部提示 */}
       <div className="pt-4 border-t border-[#E0E3E8] dark:border-[#2D3748] text-center">
         <p className="font-sans text-xs text-[#6B7B8C] dark:text-[#9AA5B1]">
@@ -211,7 +267,7 @@ export function AgentFlowProgress({
            '💡 每个 Agent 专注负责特定任务，协同工作生成更专业的 PRD'}
         </p>
         <p className="font-sans text-[10px] text-[#9AA5B1] mt-1">
-          预计耗时 60-90 秒，请耐心等待
+          预计耗时 3-4 分钟，请耐心等待
         </p>
       </div>
     </div>

@@ -14,6 +14,7 @@ export interface AgentExecutionState {
   error?: string;
   startTime?: number;
   endTime?: number;
+  logs?: string[]; // 实时日志
 }
 
 /**

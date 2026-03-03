@@ -11,6 +11,7 @@ export interface AgentState {
   endTime?: number;
   duration?: number;
   output?: string;
+  logs?: string[];
 }
 
 export interface SSEProgressEvent {

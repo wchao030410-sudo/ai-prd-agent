@@ -32,6 +32,7 @@ interface AgentState {
   endTime?: number;
   duration?: number;
   output?: string;
+  logs?: string[];
 }
 
 /**
@@ -61,6 +62,21 @@ export async function POST(request: NextRequest) {
         }
       };
 
+      // 添加日志到 agent 状态
+      const addAgentLog = (agents: Record<string, AgentState>, agentId: string, log: string) => {
+        if (agents[agentId]) {
+          if (!agents[agentId].logs) {
+            agents[agentId].logs = [];
+          }
+          const timestamp = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          agents[agentId].logs!.push(`[${timestamp}] ${log}`);
+          // 保持日志不超过 50 条
+          if (agents[agentId].logs!.length > 50) {
+            agents[agentId].logs = agents[agentId].logs!.slice(-50);
+          }
+        }
+      };
+
       let anonymousId: string = 'unknown';
       let sessionId: string | undefined = undefined;
       let agents: Record<string, AgentState> = {};
@@ -82,6 +98,7 @@ export async function POST(request: NextRequest) {
             status: 'idle',
             progress: 0,
             message: agent.message,
+            logs: [],
           };
         }
       };
@@ -133,7 +150,34 @@ export async function POST(request: NextRequest) {
             // 更新各个 Agent 的状态
             if (progress.agents) {
               for (const agent of progress.agents) {
-                updateAgentState(agents, agent.agentId, agent.status, agent.progress, agent.message);
+                // 确保 agents 对象中有这个 agent
+                if (!agents[agent.agentId]) {
+                  agents[agent.agentId] = {
+                    agentId: agent.agentId,
+                    agentName: agent.agentName,
+                    status: agent.status,
+                    progress: agent.progress,
+                    message: agent.message,
+                  };
+                }
+
+                // 更新状态
+                agents[agent.agentId].status = agent.status;
+                agents[agent.agentId].progress = agent.progress;
+                agents[agent.agentId].message = agent.message;
+
+                // 直接同步整个日志数组
+                if (agent.logs && agent.logs.length > 0) {
+                  agents[agent.agentId].logs = [...(agents[agent.agentId].logs || []), ...agent.logs].slice(-50);
+                }
+
+                // 更新时间戳
+                if (agent.status === 'running' && !agents[agent.agentId].startTime) {
+                  agents[agent.agentId].startTime = Date.now();
+                }
+                if (agent.status === 'completed') {
+                  agents[agent.agentId].endTime = Date.now();
+                }
               }
             }
 
@@ -142,7 +186,7 @@ export async function POST(request: NextRequest) {
               stage: progress.currentStage,
               message: progress.currentStage,
               progress: progress.overallProgress,
-              agents: { ...agents },
+              agents: JSON.parse(JSON.stringify(agents)), // 深拷贝避免引用问题
             });
           },
         });
