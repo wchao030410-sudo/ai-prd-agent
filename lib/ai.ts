@@ -2,6 +2,28 @@
 
 const API_BASE = 'https://open.bigmodel.cn/api/paas/v4';
 const MODEL = process.env.ZHIPU_MODEL || 'glm-4.6v';
+const API_TIMEOUT = 60000; // 60 秒超时
+
+// 带超时的 fetch
+async function fetchWithTimeout(url: string, options: RequestInit, timeout: number = API_TIMEOUT): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('请求超时，请稍后重试');
+    }
+    throw error;
+  }
+}
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -48,7 +70,7 @@ export async function chatCompletion(
     throw new Error('ZHIPU_API_KEY is not set in environment variables');
   }
 
-  const response = await fetch(`${API_BASE}/chat/completions`, {
+  const response = await fetchWithTimeout(`${API_BASE}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -145,7 +167,7 @@ export async function* chatStream(
     { role: 'user', content: userMessage },
   ];
 
-  const response = await fetch(`${API_BASE}/chat/completions`, {
+  const response = await fetchWithTimeout(`${API_BASE}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
