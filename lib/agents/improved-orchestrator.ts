@@ -262,22 +262,27 @@ export class ImprovedMultiAgentOrchestrator {
         updateAgentState('refine', 'running', 10);
         addAgentLog('refine', `开始第 ${iterations} 轮优化...`);
 
+        // 发送进度更新，让用户知道优化正在进行
+        this.sendProgress(input.onProgress, `refine_${iterations}`, 80 + (iterations * 5), agentsState, `🔧 正在优化迭代 (${iterations}/${this.config.maxIterations})，这可能需要一些时间...`);
+
         const refineResult = await this.refinerAgent.execute({
           currentPRD: prd,
           reviewFeedback: qualityReview,
         });
 
         if (!refineResult.success) {
+          addAgentLog('refine', `优化失败: ${refineResult.error}`);
           break;
         }
 
         if (!refineResult.data) {
+          addAgentLog('refine', `优化返回数据为空`);
           break;
         }
 
         prd = refineResult.data;
         updateAgentState('refine', 'completed', 100, '✅ 优化完成');
-        addAgentLog('refine', `优化完成，准备下一轮审查`);
+        addAgentLog('refine', `第 ${iterations} 轮优化完成`);
       }
 
       // 构建最终结果

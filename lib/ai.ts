@@ -2,7 +2,7 @@
 
 const API_BASE = 'https://open.bigmodel.cn/api/paas/v4';
 const MODEL = process.env.ZHIPU_MODEL || 'glm-4.7';
-const API_TIMEOUT = 60000; // 60 秒超时
+const API_TIMEOUT = 120000; // 120 秒超时
 
 // 带超时的 fetch
 async function fetchWithTimeout(url: string, options: RequestInit, timeout: number = API_TIMEOUT): Promise<Response> {

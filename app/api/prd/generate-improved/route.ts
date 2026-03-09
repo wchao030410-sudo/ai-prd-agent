@@ -166,9 +166,14 @@ export async function POST(request: NextRequest) {
                 agents[agent.agentId].progress = agent.progress;
                 agents[agent.agentId].message = agent.message;
 
-                // 直接同步整个日志数组
+                // 同步日志 - 只添加新日志（避免重复）
                 if (agent.logs && agent.logs.length > 0) {
-                  agents[agent.agentId].logs = [...(agents[agent.agentId].logs || []), ...agent.logs].slice(-50);
+                  const existingLogs = agents[agent.agentId].logs || [];
+                  // 找出 orchestrator 中有但当前 agents 中没有的日志
+                  const newLogs = agent.logs.filter(log => !existingLogs.includes(log));
+                  if (newLogs.length > 0) {
+                    agents[agent.agentId].logs = [...existingLogs, ...newLogs].slice(-50);
+                  }
                 }
 
                 // 更新时间戳
