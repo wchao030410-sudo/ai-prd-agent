@@ -1,7 +1,7 @@
 // 智谱 AI API 封装
 
 const API_BASE = 'https://open.bigmodel.cn/api/paas/v4';
-const MODEL = process.env.ZHIPU_MODEL || 'glm-4.7';
+const MODEL = process.env.ZHIPU_MODEL || 'glm-4.6v-flashx';
 const API_TIMEOUT = 120000; // 120 秒超时
 
 // 带超时的 fetch
