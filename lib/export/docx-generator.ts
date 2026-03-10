@@ -21,6 +21,100 @@ export interface DocxGenerationOptions {
 }
 
 /**
+ * 处理行内 Markdown 格式（加粗、斜体、代码等）
+ */
+function processInlineMarkdown(text: string): TextRun[] {
+  const runs: TextRun[] = [];
+  let currentIndex = 0;
+
+  // 正则表达式匹配各种行内格式
+  const patterns = [
+    { regex: /`([^`]+)`/g, type: 'code' },         // 行内代码
+    { regex: /\*\*([^*]+)\*\*/g, type: 'bold' },   // 加粗
+    { regex: /\*([^*]+)\*/g, type: 'italic' },     // 斜体
+  ];
+
+  // 找到所有匹配位置
+  const matches: Array<{ start: number; end: number; type: string; text: string }> = [];
+
+  patterns.forEach(({ regex, type }) => {
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      matches.push({
+        start: match.index,
+        end: match.index + match[0].length,
+        type,
+        text: match[1],
+      });
+    }
+  });
+
+  // 按位置排序
+  matches.sort((a, b) => a.start - b.start);
+
+  // 去重和合并重叠
+  const uniqueMatches: typeof matches = [];
+  for (const match of matches) {
+    const lastMatch = uniqueMatches[uniqueMatches.length - 1];
+    if (!lastMatch || match.start >= lastMatch.end) {
+      uniqueMatches.push(match);
+    }
+  }
+
+  // 构建 TextRun
+  for (let i = 0; i < uniqueMatches.length; i++) {
+    const match = uniqueMatches[i];
+    const prevEnd = i === 0 ? 0 : uniqueMatches[i - 1].end;
+
+    // 添加普通文本
+    if (match.start > prevEnd) {
+      const normalText = text.substring(prevEnd, match.start);
+      if (normalText.trim()) {
+        runs.push(new TextRun(normalText));
+      }
+    }
+
+    // 添加格式文本
+    switch (match.type) {
+      case 'code':
+        runs.push(new TextRun({
+          text: match.text,
+          font: 'Consolas',
+          size: 20, // 10pt
+          shading: {
+            type: ShadingType.SOLID,
+            color: 'F5F5F5',
+          },
+        }));
+        break;
+      case 'bold':
+        runs.push(new TextRun({
+          text: match.text,
+          bold: true,
+        }));
+        break;
+      case 'italic':
+        runs.push(new TextRun({
+          text: match.text,
+          italics: true,
+        }));
+        break;
+    }
+  }
+
+  // 添加最后的普通文本
+  const lastEnd = uniqueMatches.length > 0 ? uniqueMatches[uniqueMatches.length - 1].end : 0;
+  if (lastEnd < text.length) {
+    const remainingText = text.substring(lastEnd);
+    if (remainingText.trim()) {
+      runs.push(new TextRun(remainingText));
+    }
+  }
+
+  return runs.length > 0 ? runs : [new TextRun(text)];
+}
+
+/**
  * 改进的 Markdown 解析，生成更友好的 Word 文档
  */
 export async function generateDocx(
@@ -132,24 +226,23 @@ export async function generateDocx(
       );
     } else if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ')) {
       // 无序列表
+      const listText = trimmedLine.substring(2);
       content.push(
         new Paragraph({
           children: [
-            new TextRun({ text: '• ' }),
-            new TextRun(trimmedLine.substring(2)),
+            new TextRun({ text: '• ', bold: true }),
+            ...processInlineMarkdown(listText),
           ],
           spacing: { after: 80 },
-          indent: { left: 720 }, // 缩进 0.4 英寸
+          indent: { left: 720 },
         })
       );
     } else if (trimmedLine.match(/^\d+\.\s/)) {
       // 有序列表
-      const text = trimmedLine.replace(/^\d+\.\s*/, '');
+      const listText = trimmedLine.replace(/^\d+\.\s*/, '');
       content.push(
         new Paragraph({
-          children: [
-            new TextRun(text),
-          ],
+          children: [...processInlineMarkdown(listText)],
           spacing: { after: 80 },
           indent: { left: 720 },
           numbering: {
@@ -158,19 +251,22 @@ export async function generateDocx(
           },
         })
       );
-    } else if (trimmedLine.startsWith('**') && trimmedLine.endsWith('**')) {
-      // 加粗文本
+    } else if (trimmedLine.startsWith('> ')) {
+      // 引用块
+      const quoteText = trimmedLine.substring(2);
       content.push(
         new Paragraph({
-          children: [new TextRun({ text: trimmedLine.slice(2, -2), bold: true })],
-          spacing: { after: 100 },
+          children: [...processInlineMarkdown(quoteText)],
+          spacing: { after: 100, before: 100 },
+          indent: { left: 720 },
+          italics: true,
         })
       );
     } else {
-      // 普通文本
+      // 普通文本 - 使用行内格式处理
       content.push(
         new Paragraph({
-          children: [new TextRun(trimmedLine)],
+          children: [...processInlineMarkdown(trimmedLine)],
           spacing: { after: 100 },
         })
       );
