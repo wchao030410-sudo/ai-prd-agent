@@ -19,12 +19,18 @@ const FINALIZE_SYSTEM_PROMPT = `你是一个专业的技术文档撰写专家，
 4. 将 Mermaid 图表嵌入到对应的章节中，而不是放在最后
 5. 生成完整的 Markdown 格式文档
 
-文档格式要求：
-- 使用 Markdown 标准格式
+文档格式要求（必须严格遵守）：
+- 使用标准 Markdown 语法，所有标题必须使用 # 符号（如 # 一级标题、## 二级标题）
 - 结构清晰，层次分明
-- 图表使用 \`\`\`mermaid 代码块包裹
+- 图表必须使用 \`\`\`mermaid 代码块包裹，格式为：
+  \`\`\`mermaid
+  journey
+    title 用户旅程
+    ...
+  \`\`\`
 - 图表必须嵌入到对应的内容章节中，与相关文字说明配合使用
 - 不要包含单独的"目录"章节，文档元信息之后直接开始内容
+- 严禁使用纯文本作为标题，所有标题必须是 Markdown 格式
 
 重要约束：
 - 严禁在文档中包含任何代码实现细节、代码示例或编程语言语法
@@ -33,6 +39,7 @@ const FINALIZE_SYSTEM_PROMPT = `你是一个专业的技术文档撰写专家，
 - 数据模型部分描述实体关系和字段含义，使用文字说明或表格
 - 所有内容以产品经理和技术架构师的语言撰写，而非开发人员
 - Mermaid 图表必须放在相关章节内部，作为文字说明的补充
+- 输出必须是纯 Markdown，不要包含 HTML 标签或其他格式
 `;
 
 const FINALIZE_PROMPT = (prd: PRDDocument, diagrams: { architecture?: string; journey?: string; features?: string; dataflow?: string }): string => `
