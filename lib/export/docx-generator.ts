@@ -256,10 +256,14 @@ export async function generateDocx(
       const quoteText = trimmedLine.substring(2);
       content.push(
         new Paragraph({
-          children: [...processInlineMarkdown(quoteText)],
+          children: [
+            new TextRun({
+              text: quoteText,
+              italics: true,
+            }),
+          ],
           spacing: { after: 100, before: 100 },
           indent: { left: 720 },
-          italics: true,
         })
       );
     } else {
